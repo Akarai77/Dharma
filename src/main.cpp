@@ -1,9 +1,11 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
-#include<iostream>
+#include <iostream>
 #include <sstream>
 #include <string>
+#include <filesystem>
 #include <vector>
 #include "error.hpp"
 #include "parser.hpp"
@@ -52,6 +54,15 @@ int main(int argc, char** argv){
         std::cerr<<"Usage karma [script]\n";
         exit(EXIT_FAILURE);
    } else if(argc == 2) {
+       std::filesystem::path filePath = argv[1];
+        if(filePath.extension() != ".dh"){
+            std::cerr<<"Invalid file input to sutra!";
+            exit(EXIT_FAILURE);
+        }
+        if(!std::filesystem::exists(argv[1])){
+            std::cerr<<"File "<<argv[1]<<" does not exist!";
+            exit(EXIT_FAILURE);
+        }
         runFile(argv[1]);
    } else {
         runPrompt();
