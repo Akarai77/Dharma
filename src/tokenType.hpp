@@ -20,7 +20,7 @@ enum class TokenType {
     PIPE, PIPE_PIPE,
     AMP, AMP_AMP,
 
-    // Literals (the building blocks of code)
+    // Literals
     IDENTIFIER,
     VARIABLE,
     STRING,
@@ -34,8 +34,7 @@ enum class TokenType {
     AND, OR, NOT,
     IF, ELIF, ELSE,
     FOR, WHILE, LOOP,
-    BREAK, CONTINUE,
-    LET, VAR, CONST,
+    BREAK, CONTINUE, CONST,
     FUN, RETURN,
     MATCH, CASE, DEFAULT,
     CLASS, SUPER, THIS, EXTENDS, NEW,

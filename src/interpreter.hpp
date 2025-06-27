@@ -25,8 +25,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         }
 
         void executeBlock(std::vector<Statement>& statements,Environment* newEnvironment){
-            EnvGuard guard(this->environment);
-            this->environment = newEnvironment;
+            EnvSwitch Switch(this->environment,newEnvironment);
 
             for(auto& statement : statements){
                 execute(statement);
@@ -179,9 +178,10 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
            return {"nil","nil"};
         }
 
-        LiteralValue visitExprStmt(ExprStmt& statement) override{
-            evaluate(statement.expression);
-            return {"nil","nil"};
+        LiteralValue visitAssignExpr(AssignExpr& expr) override {
+            LiteralValue value = evaluate(expr.value);
+            environment->assign(expr.name,value);
+            return value;
         }
 
         LiteralValue visitPrintStmt(PrintStmt& statement) override {
@@ -190,22 +190,30 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             return {"nil","nil"};
         }
 
+        LiteralValue visitExprStmt(ExprStmt& statement) override{
+            evaluate(statement.expression);
+            return {"nil","nil"};
+        }
+
         LiteralValue visitVarStmt(VarStmt& statement) override {
             LiteralValue value;
             if(statement.initializer != nullptr){
                 value = evaluate(statement.initializer);
             }
-            if(statement.type.has_value())
-                environment->define(statement.name.lexeme,value,statement.type.value().lexeme);
-            else
-             environment->define(statement.name.lexeme,value,"variable");
+
+            environment->define(statement.name.lexeme,value,statement.type.lexeme);
             return {"nil","nil"};
         }
 
-        LiteralValue visitAssignExpr(AssignExpr& expr) override {
-            LiteralValue value = evaluate(expr.value);
-            environment->assign(expr.name,value);
-            return value;
+        LiteralValue visitIfStmt(IfStmt& statement) override {
+            if(std::any_cast<bool>(isTruthy(evaluate(statement.ifCondition)).first)){
+                execute(statement.thenBranch);
+            } else if(statement.elifCondition != nullptr && std::any_cast<bool>(isTruthy(evaluate(statement.elifCondition)).first)){
+                execute(statement.elifBranch);
+            } else if(statement.elseBranch != nullptr){
+                execute(statement.elseBranch);
+            }
+            return {"nil","nil"};
         }
 
         LiteralValue visitBlockStmt(BlockStmt& stmt) override {

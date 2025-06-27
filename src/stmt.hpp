@@ -10,6 +10,7 @@ class BlockStmt;
 class ExprStmt;
 class PrintStmt;
 class VarStmt;
+class IfStmt;
 
 using Statement = std::unique_ptr<Stmt>;
 
@@ -24,6 +25,7 @@ public:
 	virtual LiteralValue visitExprStmt(ExprStmt& stmt) = 0;
 	virtual LiteralValue visitPrintStmt(PrintStmt& stmt) = 0;
 	virtual LiteralValue visitVarStmt(VarStmt& stmt) = 0;
+	virtual LiteralValue visitIfStmt(IfStmt& stmt) = 0;
 	virtual ~StmtVisitor() = default;
 };
 
@@ -66,11 +68,25 @@ public:
 class VarStmt : public Stmt {
 public:
 	Token name;
-	std::optional<Token> type;
+	Token type;
 	Expression initializer;
 
-	VarStmt(Token name, std::optional<Token> type, Expression initializer) : name(name), type(type), initializer(std::move(initializer)) {}
+	VarStmt(Token name, Token type, Expression initializer) : name(name), type(type), initializer(std::move(initializer)) {}
 	LiteralValue accept(StmtVisitor& visitor) override {
 		return visitor.visitVarStmt(*this);
+	}
+};
+
+class IfStmt : public Stmt {
+public:
+	Expression ifCondition;
+	Statement thenBranch;
+	Expression elifCondition;
+	Statement elifBranch;
+	Statement elseBranch;
+
+	IfStmt(Expression ifCondition, Statement thenBranch, Expression elifCondition, Statement elifBranch, Statement elseBranch) : ifCondition(std::move(ifCondition)), thenBranch(std::move(thenBranch)), elifCondition(std::move(elifCondition)), elifBranch(std::move(elifBranch)), elseBranch(std::move(elseBranch)) {}
+	LiteralValue accept(StmtVisitor& visitor) override {
+		return visitor.visitIfStmt(*this);
 	}
 };

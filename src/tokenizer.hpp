@@ -31,8 +31,6 @@ class Tokenizer{
             {"loop"     ,TokenType::LOOP},
             {"break"    ,TokenType::BREAK},
             {"continue" ,TokenType::CONTINUE},
-            {"let"      ,TokenType::LET},
-            {"var"      ,TokenType::VAR},
             {"print"    ,TokenType::CHANT},
             {"const"    ,TokenType::CONST},
             {"fun"      ,TokenType::FUN},
@@ -55,6 +53,7 @@ class Tokenizer{
             {"export"   ,TokenType::EXPORT},
             {"async"    ,TokenType::ASYNC},
             {"await"    ,TokenType::AWAIT},
+            {"var"      ,TokenType::TYPE},
             {"int"      ,TokenType::TYPE},
             {"decimal"  ,TokenType::TYPE},
             {"string"   ,TokenType::TYPE},
@@ -186,13 +185,7 @@ class Tokenizer{
                 case ' ' : 
                 case '\r' :
                 case '\t' : break;
-                case '\n' : 
-                            if(canInsertSemicolonAfter(lastSignificant)){
-                                addToken(TokenType::SEMICOLON);
-                            } else {
-                                semicolonFlag = false;
-                            }
-                            line++; break;
+                case '\n' : line++; break;
                 
                 case '\'' : getString('\''); break;
                 case '"'  : getString('"'); break;
@@ -219,8 +212,6 @@ class Tokenizer{
                 scanToken();
             }
 
-            if (!tokens.empty() && canInsertSemicolonAfter(lastSignificant) && tokens.at(tokens.size()-1).type != TokenType::SEMICOLON)         
-                addToken(TokenType::SEMICOLON);
 
             tokens.push_back(Token(TokenType::EOF_TOKEN,"",std::nullopt,line));
             return tokens;

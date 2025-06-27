@@ -50,6 +50,10 @@ class Parser{
         }
 
         Token consume(TokenType type, std::string message){
+            if(type == TokenType::SEMICOLON) {
+                if(check(type)) return advance();
+                else return Token(TokenType::SEMICOLON,";",std::nullopt,peek().line);
+            }
             if(check(type)) {
                 return advance();
             }
@@ -104,9 +108,8 @@ class Parser{
                 switch(peek().type){
                     case TokenType::CLASS:
                     case TokenType::FUN:
-                    case TokenType::VAR:
-                    case TokenType::LET:
                     case TokenType::FOR:
+                    case TokenType::TYPE:
                     case TokenType::IF:
                     case TokenType::WHILE:
                     case TokenType::CHANT:
@@ -179,7 +182,7 @@ class Parser{
             if(match({TokenType::VARIABLE})) {
                 LiteralValue lit = getLiteralData(previous().literal);
 
-                if (expectedType.has_value()) {
+                if (expectedType.has_value() && expectedType.value().lexeme != "var") {
                     if(expectedType.value().lexeme == "int") previous().type = TokenType::INT;
                     if(expectedType.value().lexeme == "decimal") previous().type = TokenType::DECIMAL;
                     if(expectedType.value().lexeme == "string") previous().type = TokenType::STRING;
@@ -293,6 +296,31 @@ class Parser{
             return getAssignment(type);            
         }
 
+        Statement getVarDeclaration(Token type){
+            Token name = consume(TokenType::IDENTIFIER,"Expect Variable name");
+
+            if(match({TokenType::COLON})){
+                Token annotatedType = consume(TokenType::TYPE,"Expected Type after ':'");
+                if(annotatedType.lexeme == "var")
+                    throw error(previous(),"Invalid type annotation: 'var' cannot be used as a type annotation.");
+                if(type.lexeme != "var"){
+                    if(type.lexeme == annotatedType.lexeme)
+                        throw error(previous(),"Redundant type annotation: variable '"+name.lexeme+"' already declared as '"+type.lexeme+"'.");
+                    else
+                        throw error(previous(),"Conflicting type annotations for '"+name.lexeme+"' : declared as '"+type.lexeme+"' but annotated as '"+annotatedType.lexeme+"'.");
+                }
+                type = annotatedType;
+            }
+            
+            Expression initializer = nullptr;
+            if(match({TokenType::EQUAL})) {
+                initializer = getExpression(std::make_optional<Token>(type));
+            }
+
+            consume(TokenType::SEMICOLON,"Expect ';' after variable declaration.");
+            return makeStmt<VarStmt>(name,type,std::move(initializer));
+        }
+
         Statement getPrintStmt(){
             Expression value = getExpression();
             consume(TokenType::SEMICOLON, "Expect ';' after expression.");
@@ -305,22 +333,27 @@ class Parser{
             return makeStmt<ExprStmt>(std::move(expression));
         }
 
-        Statement getVarDeclaration(){
-            Token name = consume(TokenType::IDENTIFIER,"Expect Variable name");
+        Statement getIfStatement(){
+            consume(TokenType::LEFT_PAREN,"Expect '(' after if");
+            Expression ifCondition = getExpression();
+            consume(TokenType::RIGHT_PAREN,"Expect ')' after condition");
+
+            Statement thenBranch = getStatement();
+            Expression elifCondition = nullptr;
+            Statement elifBranch = nullptr;
+            if(match({TokenType::ELIF})){
+                consume(TokenType::LEFT_PAREN,"Expect '(' after elif");
+                elifCondition = getExpression();
+                consume(TokenType::RIGHT_PAREN,"Expect ')' after condition");
+                elifBranch = getStatement();
+            }
             
-            std::optional<Token> type = std::nullopt;
-            if(match({TokenType::COLON})) {
-                if(peek().type == TokenType::TYPE) type = advance();
-                else throw error(peek(),"Expect type after ':'");
+            Statement elseBranch = nullptr;
+            if(match({TokenType::ELSE})){
+                elseBranch = getStatement();
             }
 
-            Expression initializer = nullptr;
-            if(match({TokenType::EQUAL})) {
-                initializer = getExpression(type);
-            }
-
-            consume(TokenType::SEMICOLON,"Expect ';' after variable declaration.");
-            return makeStmt<VarStmt>(name,type,std::move(initializer));
+            return makeStmt<IfStmt>(std::move(ifCondition),std::move(thenBranch),std::move(elifCondition),std::move(elifBranch),std::move(elseBranch));
         }
 
         std::vector<Statement> getBlockStmt(){
@@ -336,6 +369,7 @@ class Parser{
 
         Statement getStatement(){
             if(match({TokenType::CHANT})) return getPrintStmt();
+            if(match({TokenType::IF})) return getIfStatement();
             if(match({TokenType::LEFT_BRACE})) return makeStmt<BlockStmt>(getBlockStmt());
 
             return getExprStmt();
@@ -343,7 +377,7 @@ class Parser{
 
         Statement getDeclaration(){
             try{
-                if(match({TokenType::VAR})) return getVarDeclaration();
+                if(match({TokenType::TYPE})) return getVarDeclaration(previous());
                 return getStatement();
             } catch(ParseError& error){
                 synchronize();

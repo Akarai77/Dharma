@@ -4,4 +4,5 @@ Statement
 BlockStmt -> std::vector<Statement> *statements
 ExprStmt -> Expression *expression
 PrintStmt -> Expression *expression
-VarStmt -> Token name,std::optional<Token> type, Expression *initializer
+VarStmt -> Token name,Token type, Expression *initializer
+IfStmt -> Expression *ifCondition, Statement *thenBranch,Expression *elifCondition,Statement *elifBranch, Statement *elseBranch

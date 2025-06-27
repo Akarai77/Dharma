@@ -31,7 +31,7 @@ class Environment{
         void assign(Token name,LiteralValue value){
             if(values.contains(name.lexeme)){
                 std::string type = values[name.lexeme].second;
-                if(type == value.second || type == "variable"){
+                if(type == value.second || type == "var"){
                     values[name.lexeme].first = value;
                     return;
                 }
@@ -47,14 +47,19 @@ class Environment{
         }
 };
 
-class EnvGuard {
+class EnvSwitch {
     Environment*& target;
     Environment* previous;
 
-    public:
-        EnvGuard(Environment*& target) : target(target), previous(target) {}
+public:
+    EnvSwitch(Environment*& target, Environment*& newEnv)
+        : target(target), previous(target)
+    {
+        target = newEnv;
+    }
 
-        ~EnvGuard() {
-            target = previous;
-        }
+    ~EnvSwitch() {
+        target = previous;
+    }
 };
+
