@@ -1,7 +1,7 @@
 #include "Token.hpp"
 Expr
 Expression
-AssignExpr -> Token name, Expression *value
+AssignExpr -> Token name, Token Operator, Expression *value
 BinaryExpr -> Expression *left, Token Operator, Expression *right
 UnaryExpr -> Token Operator, Expression *right
 GroupingExpr -> Expression *expression

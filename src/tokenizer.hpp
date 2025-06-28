@@ -138,7 +138,7 @@ class Tokenizer{
                 type = TokenType::IDENTIFIER;
             else
                 type = it->second;
-            addToken(type,text);
+            addToken(type);
         }
 
         bool canInsertSemicolonAfter(TokenType type) {
@@ -163,10 +163,19 @@ class Tokenizer{
                 case '.' : addToken(TokenType::DOT); break;
                 case ';' : addToken(TokenType::SEMICOLON); semicolonFlag = true; break;
                 case ':' : addToken(TokenType::COLON); break;
-                case '-' : addToken(match('=') ? TokenType::MINUS_EQUAL : (match('>') ? TokenType::ARROW : TokenType::MINUS)); break;
-                case '+' : addToken(match('=') ? TokenType::PLUS_EQUAL : TokenType::PLUS); break;
+                case '-':
+                           if (match('='))       addToken(TokenType::MINUS_EQUAL);
+                           else if (match('>'))  addToken(TokenType::ARROW);
+                           else if (match('-'))  addToken(TokenType::MINUS_MINUS);
+                           else                  addToken(TokenType::MINUS);
+                           break;
+                case '+':
+                           if (match('='))       addToken(TokenType::PLUS_EQUAL);
+                           else if (match('+'))  addToken(TokenType::PLUS_PLUS);
+                           else                  addToken(TokenType::PLUS);
+                           break;
                 case '*' : addToken(match('=') ? TokenType::STAR_EQUAL : TokenType::STAR); break;
-                case '%' : addToken(TokenType::PERCENT); break;
+                case '%' : addToken(match('=') ? TokenType::PERCENT_EQUAL : TokenType::PERCENT); break;
                 case '!' : addToken(match('=') ? TokenType::BANG_EQUAL :  (match('>') ? TokenType::FAT_ARROW : TokenType::EQUAL)); break;
                 case '=' : addToken(match('=') ? TokenType::EQUAL_EQUAL : TokenType::EQUAL); break;
                 case '<' : addToken(match('=') ? TokenType::LESS_EQUAL : TokenType::LESS); break;

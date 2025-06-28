@@ -7,7 +7,6 @@
 #include "environment.hpp"
 #include <any>
 #include <cmath>
-#include <minwindef.h>
 #include <string>
 #include <vector>
 #include "error.hpp"
@@ -45,6 +44,10 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             return {true,"boolean"};
         }
 
+        bool isLiteral(Expr* expr) {
+            return dynamic_cast<LiteralExpr*>(expr) != nullptr;
+        }
+
         int getPriority(std::string type){
             if(type == "boolean") return 0;
             if(type == "int") return 1;
@@ -57,7 +60,11 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             const auto& [value,currentType] = operand;
 
             if(currentType == targetType) return operand;
-
+            //warn ni->othertype
+            if(currentType == "nil"){
+                if(targetType == "int" || targetType == "decimal") return {0,targetType};
+                if(targetType == "boolean") return {false,"boolean"};
+            }
             if(currentType == "boolean"){
                 bool val = std::any_cast<bool>(value);
                 if(targetType == "int") return {static_cast<int>(val),"int"};
@@ -84,7 +91,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             } else if (result.second == "decimal") {
                 text = std::to_string(std::any_cast<double>(result.first));
             } else if (result.second == "string") {
-                text = std::any_cast<std::string>(result.first);
+                text = "'"+std::any_cast<std::string>(result.first)+"'";
             } else {
                 text = "nil";
             }
@@ -101,17 +108,71 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         }
 
         LiteralValue visitUnaryExpr(UnaryExpr& expr) override {
-            LiteralValue right = evaluate(expr.right);
+            LiteralValue value = evaluate(expr.right);
 
             switch(expr.Operator.type){
                 case TokenType::MINUS : 
-                    if(right.second == "int")
-                        return  {- std::any_cast<int>(right.first),"int"};
-                    if(right.second == "decimal")
-                        return {- std::any_cast<double>(right.first),"decimal"};
+                    if(value.second == "int")
+                        return  {- std::any_cast<int>(value.first),"int"};
+                    if(value.second == "decimal")
+                        return {- std::any_cast<double>(value.first),"decimal"};
                     throw RuntimeError(expr.Operator,"Unsupported operand");
-                case TokenType::BANG:
-                    return {!std::any_cast<bool>(isTruthy(right).first),"boolean"};
+
+                case TokenType::BANG :
+                    return {!std::any_cast<bool>(isTruthy(value).first),"boolean"};
+
+                case TokenType::PRE_INCR :
+                case TokenType::POST_INCR : 
+                    {
+                        LiteralValue original = value;
+                        LiteralValue incrementedValue;
+
+                        if(value.second == "int")
+                            incrementedValue = {std::any_cast<int>(value.first)+1,"int"};
+                        else if(value.second == "decimal")
+                            incrementedValue = {std::any_cast<double>(value.first)+1,"decimal"};
+                        else
+                            throw RuntimeError(expr.Operator, "Invalid operand type for '++'");
+
+                        if(auto varExpr = dynamic_cast<VariableExpr*>(expr.right.get())) {
+                            environment->assign(varExpr->name,incrementedValue);
+
+                            return (expr.Operator.type == TokenType::PRE_INCR)
+                                ? incrementedValue
+                                : original;
+                        } else if(isLiteral(expr.right.get())) {
+                            throw RuntimeError(expr.Operator,"Cannot apply '++' to a literal.");
+                        } else {
+                            throw RuntimeError(expr.Operator,"Cannot apply '++' to non-assignable expression.");
+                        }
+                    }
+
+                case TokenType::PRE_DECR :
+                case TokenType::POST_DECR :
+                    {
+                        LiteralValue original = value;
+                        LiteralValue decrementedValue;
+
+                        if(value.second == "int")
+                            decrementedValue = {std::any_cast<int>(value.first)-1,"int"};
+                        else if(value.second == "decimal")
+                            decrementedValue = {std::any_cast<double>(value.first)-1,"decimal"};
+                        else
+                            throw RuntimeError(expr.Operator, "Invalid operand type for '--'");
+
+                        if(auto varExpr = dynamic_cast<VariableExpr*>(expr.right.get())) {
+                            environment->assign(varExpr->name,decrementedValue);
+
+                            return (expr.Operator.type == TokenType::PRE_DECR)
+                                ? decrementedValue
+                                : original;
+                        } else if(isLiteral(expr.right.get())) {
+                            throw RuntimeError(expr.Operator,"Cannot apply '--' to a literal");
+                        } else {
+                            throw RuntimeError(expr.Operator,"Cannot apply '--' to non-assignable expression.");
+                        }
+                    }
+
             }
 
             return {"nil","nil"};
@@ -126,7 +187,6 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
            LiteralValue right = evaluate(expr.right);
 
            std::string targetType = getPriority(left.second) > getPriority(right.second) ? left.second : right.second;
-           
            auto [leftval,leftType] = promoteType(left,targetType);
            auto [rightval,rightType] = promoteType(right,targetType);
            switch(expr.Operator.type){
@@ -196,7 +256,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         }
 
         LiteralValue visitVarStmt(VarStmt& statement) override {
-            LiteralValue value;
+            LiteralValue value = {"nil","nil"};
             if(statement.initializer != nullptr){
                 value = evaluate(statement.initializer);
             }
@@ -233,4 +293,4 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                 Adharma::runtimeError(err);
             }
         }
-};
+};;

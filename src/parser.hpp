@@ -1,3 +1,30 @@
+/*
+program        → declaration* EOF ;
+declaration    → varDecl
+               | statement ;
+statement      → exprStmt
+               | ifStmt
+               | printStmt
+               | block ;
+ifStmt         → "if" "(" expression ")" statement
+               ( "else" statement )? ;
+block          → "{" declaration* "}" ;
+exprStmt       → expression ";" ;
+printStmt      → "print" expression ";" ;
+varDecl        → ("var"|"int"|"boolean"|"decimal"|"string") IDENTIFIER (":" (int"|"decimal"|"string"|"boolean"))? ( "=" expression )? ";";
+expression     → assignment ;
+assignment     → IDENTIFIER ("=" | "+=" | "-=" | "*=" | "/=" | "%=") assignment
+               | equality ;
+equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+term           → factor ( ( "-" | "+" ) factor )* ;
+factor         → unary ( ( "/" | "*" ) unary )* ;
+unary          → ( "!" | "-" | "++" | "--" ) unary
+               | primary ("++"|"--")? ;
+primary        → VARIABLE | "true" | "false" | "nil"
+               | "(" expression ")" ;
+*/
+
 #pragma once
 #include "Token.hpp"
 #include "error.hpp"
@@ -5,6 +32,7 @@
 #include "stmt.hpp"
 #include "tokenType.hpp"
 #include <algorithm>
+#include <bits/chrono.h>
 #include <initializer_list>
 #include <optional>
 #include <unordered_map>
@@ -20,8 +48,8 @@ class Parser{
             else return false;
         }
 
-        Token peek(){
-            return tokens.at(current);
+        Token peek(int offset = 0){
+            return tokens.at(current + offset);
         }
 
         Token& previous(int offset = 1){
@@ -52,7 +80,7 @@ class Parser{
         Token consume(TokenType type, std::string message){
             if(type == TokenType::SEMICOLON) {
                 if(check(type)) return advance();
-                else return Token(TokenType::SEMICOLON,";",std::nullopt,peek().line);
+                else return Token(TokenType::SEMICOLON,";",std::nullopt,peek().line); //warn implicit ;
             }
             if(check(type)) {
                 return advance();
@@ -60,6 +88,18 @@ class Parser{
 
             throw error(peek(),message);
         }
+
+        Token mapCompoundToBinary(Token Operator) {
+            switch (Operator.type) {
+                case TokenType::PLUS_EQUAL: return Token(TokenType::PLUS, "+", std::nullopt, Operator.line);
+                case TokenType::MINUS_EQUAL: return Token(TokenType::MINUS, "-", std::nullopt, Operator.line);
+                case TokenType::STAR_EQUAL: return Token(TokenType::STAR, "*", std::nullopt, Operator.line);
+                case TokenType::SLASH_EQUAL: return Token(TokenType::SLASH, "/", std::nullopt, Operator.line);
+                case TokenType::PERCENT_EQUAL: return Token(TokenType::PERCENT, "%",std::nullopt,Operator.line);
+                default: throw std::runtime_error("Unknown compound operator");
+            }
+        }
+
 
         bool isConvertible(std::string from, std::string to) {
             static std::unordered_map<std::string, std::vector<std::string>> conversionTable = {
@@ -217,13 +257,25 @@ class Parser{
         }
 
         Expression getUnary(std::optional<Token> type = std::nullopt){
-            while(match({TokenType::BANG,TokenType::MINUS})){
+            if(match({TokenType::BANG,TokenType::MINUS,TokenType::PLUS_PLUS,TokenType::MINUS_MINUS})){
                 Token Operator = previous();
+                if(Operator.type == TokenType::PLUS_PLUS)
+                    Operator.type = TokenType::PRE_INCR;
+                else if(Operator.type == TokenType::MINUS_MINUS)
+                    Operator.type = TokenType::PRE_DECR;
                 Expression right = getUnary();
                 return makeExpr<UnaryExpr>(Operator,std::move(right));
             }
             
-            return getPrimary(type);
+            Expression expr = getPrimary(type);
+
+            if (match({TokenType::PLUS_PLUS,TokenType::MINUS_MINUS})) {
+                Token Operator = previous();
+                Operator.type = (Operator.type == TokenType::PLUS_PLUS) ? TokenType::POST_INCR : TokenType::POST_DECR;
+                return makeExpr<UnaryExpr>(Operator, std::move(expr));
+            }
+
+            return expr;
         }
 
         Expression getFactor(std::optional<Token> type = std::nullopt){
@@ -277,16 +329,20 @@ class Parser{
         Expression getAssignment(std::optional<Token> type = std::nullopt){
             Expression expr = getEquality(type);
 
-            if(match({TokenType::EQUAL})){
-                Token equals = previous();
+            if(match({TokenType::EQUAL,TokenType::PLUS_EQUAL,TokenType::MINUS_EQUAL,TokenType::STAR_EQUAL,TokenType::SLASH_EQUAL,TokenType::PERCENT_EQUAL})){
+                Token Operator = previous();
                 Expression value = getAssignment();
 
                 if(auto varExpr = dynamic_cast<VariableExpr*>(expr.get())){
+                    if(Operator.type != TokenType::EQUAL){
+                        value = makeExpr<BinaryExpr>(std::move(expr),mapCompoundToBinary(Operator),std::move(value));
+                    }
+
                     Token name = varExpr->name;
-                    return makeExpr<AssignExpr>(name,std::move(value));
+                    return makeExpr<AssignExpr>(name,Operator,std::move(value));
                 }
 
-                Adharma::error(equals, "Invaid Assignment Target");
+                Adharma::error(Operator, "Invaid Assignment Target");
             }
 
             return expr;

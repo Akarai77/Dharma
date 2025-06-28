@@ -38,9 +38,10 @@ public:
 class AssignExpr : public Expr {
 public:
 	Token name;
+	Token Operator;
 	Expression value;
 
-	AssignExpr(Token name, Expression value) : name(name), value(std::move(value)) {}
+	AssignExpr(Token name, Token Operator, Expression value) : name(name), Operator(Operator), value(std::move(value)) {}
 	LiteralValue accept(ExprVisitor& visitor) override {
 		return visitor.visitAssignExpr(*this);
 	}
