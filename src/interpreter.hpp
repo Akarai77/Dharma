@@ -56,11 +56,11 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             return -1;
         }
 
-        LiteralValue promoteType(const LiteralValue& operand,std::string targetType) {
+        LiteralValue promoteType(const LiteralValue& operand,std::string targetType,RuntimeError err) {
             const auto& [value,currentType] = operand;
 
             if(currentType == targetType) return operand;
-            //warn ni->othertype
+            //warn nil->othertype
             if(currentType == "nil"){
                 if(targetType == "int" || targetType == "decimal") return {0,targetType};
                 if(targetType == "boolean") return {false,"boolean"};
@@ -74,9 +74,8 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                 int val = std::any_cast<int>(value);
                 if(targetType == "decimal") return {static_cast<double>(val),"decimal"};
             }
-
-            std::cerr<<"Promotion invalid";
-            return {"nil","nil"};
+            
+            throw err;
         }
 
         std::string stringify(LiteralValue result) const {
@@ -187,52 +186,89 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
            LiteralValue right = evaluate(expr.right);
 
            std::string targetType = getPriority(left.second) > getPriority(right.second) ? left.second : right.second;
-           auto [leftval,leftType] = promoteType(left,targetType);
-           auto [rightval,rightType] = promoteType(right,targetType);
+           auto [leftval,leftType] = promoteType(left,targetType,RuntimeError(expr.Operator,"Operands are of incompatible types!"));
+           auto [rightval,rightType] = promoteType(right,targetType,RuntimeError(expr.Operator,"Operands are of incompatible types!"));
            switch(expr.Operator.type){
+               
                case TokenType::GREATER:
-                    if(targetType == "int") return {std::any_cast<int>(leftval) > std::any_cast<int>(rightval), "int"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) > std::any_cast<double>(rightval), "decimal"};
+                    if(targetType == "int") return {std::any_cast<int>(leftval) > std::any_cast<int>(rightval), "boolean"};
+                    if(targetType == "decimal") return {std::any_cast<double>(leftval) > std::any_cast<double>(rightval), "boolean"};
+                    if(targetType == "string") return {std::any_cast<std::string>(leftval) > std::any_cast<std::string>(rightval),"boolean"};
+                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) > std::any_cast<bool>(rightval),"boolean"};
+                    break;
                 case TokenType::GREATER_EQUAL:
-                    if(targetType == "int") return {std::any_cast<int>(leftval) >= std::any_cast<int>(rightval), "int"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) >= std::any_cast<double>(rightval), "decimal"};
+                    if(targetType == "int") return {std::any_cast<int>(leftval) >= std::any_cast<int>(rightval), "boolean"};
+                    if(targetType == "decimal") return {std::any_cast<double>(leftval) >= std::any_cast<double>(rightval), "boolean"};
+                    if(targetType == "string") return {std::any_cast<std::string>(leftval) >= std::any_cast<std::string>(rightval),"boolean"};
+                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) >= std::any_cast<bool>(rightval),"boolean"};
+                    break;
                 case TokenType::LESS:
-                    if(targetType == "int") return {std::any_cast<int>(leftval) < std::any_cast<int>(rightval), "int"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) < std::any_cast<double>(rightval), "decimal"};
+                    if(targetType == "int") return {std::any_cast<int>(leftval) < std::any_cast<int>(rightval), "boolean"};
+                    if(targetType == "decimal") return {std::any_cast<double>(leftval) < std::any_cast<double>(rightval), "boolean"};
+                    if(targetType == "string") return {std::any_cast<std::string>(leftval) < std::any_cast<std::string>(rightval),"boolean"};
+                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) < std::any_cast<bool>(rightval),"boolean"};
+                    break;
                 case TokenType::LESS_EQUAL:
-                     if(targetType == "int") return {std::any_cast<int>(leftval) <= std::any_cast<int>(rightval), "int"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) <= std::any_cast<double>(rightval), "decimal"};
+                    if(targetType == "int") return {std::any_cast<int>(leftval) <= std::any_cast<int>(rightval), "boolean"};
+                    if(targetType == "decimal") return {std::any_cast<double>(leftval) <= std::any_cast<double>(rightval), "boolean"};
+                    if(targetType == "string") return {std::any_cast<std::string>(leftval) <= std::any_cast<std::string>(rightval),"boolean"};
+                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) <= std::any_cast<bool>(rightval),"boolean"};
+                    break;
                case TokenType::BANG_EQUAL:
-                     if(targetType == "int") return {std::any_cast<int>(leftval) != std::any_cast<int>(rightval), "int"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) != std::any_cast<double>(rightval), "decimal"};
+                    if(targetType == "int") return {std::any_cast<int>(leftval) != std::any_cast<int>(rightval), "boolean"};
+                    if(targetType == "decimal") return {std::any_cast<double>(leftval) != std::any_cast<double>(rightval), "boolean"};
+                    if(targetType == "string") return {std::any_cast<std::string>(leftval) != std::any_cast<std::string>(rightval),"boolean"};
+                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) != std::any_cast<bool>(rightval),"boolean"};
+                    break;
                case TokenType::EQUAL_EQUAL:
-                    return isEqual(left,right); break;
-                case TokenType::PLUS:
+                    if(targetType == "int") return {std::any_cast<int>(leftval) == std::any_cast<int>(rightval), "boolean"};
+                    if(targetType == "decimal") return {std::any_cast<double>(leftval) == std::any_cast<double>(rightval), "boolean"};
+                    if(targetType == "string") return {std::any_cast<std::string>(leftval) == std::any_cast<std::string>(rightval),"boolean"};
+                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) == std::any_cast<bool>(rightval),"boolean"};
+                    break;
+
+               case TokenType::PLUS:
                     if(targetType == "int") return {std::any_cast<int>(leftval) + std::any_cast<int>(rightval), "int"};
                     if(targetType == "decimal") return {std::any_cast<double>(leftval) + std::any_cast<double>(rightval), "decimal"};
                     if(left.second == "string" && right.second == "string") return {std::any_cast<std::string>(left.first) + std::any_cast<std::string>(right.first),"string"};
-                   throw RuntimeError(expr.Operator,"Operands are of incompatible types!");
-                   break;
-                case TokenType::MINUS:
+                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) + std::any_cast<bool>(rightval),"int"};
+                    break;
+               case TokenType::MINUS:
                     if(targetType == "int") return {std::any_cast<int>(leftval) - std::any_cast<int>(rightval), "int"};
                     if(targetType == "decimal") return {std::any_cast<double>(leftval) - std::any_cast<double>(rightval), "decimal"};
+                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) - std::any_cast<bool>(rightval),"int"};
+                    if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
+                    break;
                case TokenType::STAR:
                     if(targetType == "int") return {std::any_cast<int>(leftval) * std::any_cast<int>(rightval), "int"};
                     if(targetType == "decimal") return {std::any_cast<double>(leftval) * std::any_cast<double>(rightval), "decimal"};
+                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) * std::any_cast<bool>(rightval),"int"};
+                    if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
+                    break;
                case TokenType::SLASH:
                     if(targetType == "int"){
                         if(std::any_cast<int>(rightval) != 0)
-                            return {std::any_cast<int>(leftval) > std::any_cast<int>(rightval), "int"};
+                            return {std::any_cast<int>(leftval) / std::any_cast<int>(rightval), "int"};
                         throw RuntimeError(expr.Operator,"Divide by zero error");
                     }
                     if(targetType == "decimal"){
                         if(std::any_cast<double>(rightval) != 0.0)
-                            return {std::any_cast<double>(leftval) > std::any_cast<double>(rightval), "int"};
+                            return {std::any_cast<double>(leftval) / std::any_cast<double>(rightval), "int"};
                         throw RuntimeError(expr.Operator,"Divide by zero error");
                     }
+                    if(targetType == "boolean"){
+                        if(std::any_cast<bool>(rightval) != false)
+                            return {std::any_cast<bool>(leftval) / std::any_cast<bool>(rightval), "int"};
+                        throw RuntimeError(expr.Operator,"Divide by zero error ('false' evaluates to '0')");
+                    }
+                    if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
+                    break;
                case TokenType::PERCENT:
                     if(targetType == "int") return {std::any_cast<int>(leftval) % std::any_cast<int>(rightval), "int"};
                     if(targetType == "decimal") return {fmod(std::any_cast<double>(leftval),std::any_cast<double>(rightval)), "decimal"};
+                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) % std::any_cast<bool>(rightval),"boolean"};
+                    if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
+                    break;
           }
 
            return {"nil","nil"};
