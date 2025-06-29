@@ -37,10 +37,10 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             }
         }
 
-        LiteralValue isTruthy(LiteralValue literal) const {
-            if(literal.second == "nil") return {false,"bool"};
-            if(literal.second == "bool") return {!std::any_cast<bool>(literal.first),"bool"};
-            return {true,"boolean"};
+        bool isTruthy(LiteralValue literal) const {
+            if(literal.second == "nil") return false;
+            if(literal.second == "boolean") return std::any_cast<bool>(literal.first);
+            return true;
         }
 
         LiteralValue isEqual(const std::any& l,const std::any& r) const {
@@ -124,7 +124,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                     throw RuntimeError(expr.Operator,"Unsupported operand");
 
                 case TokenType::BANG :
-                    return {!std::any_cast<bool>(isTruthy(value).first),"boolean"};
+                    return {!isTruthy(value),"boolean"};
 
                 case TokenType::PRE_INCR :
                 case TokenType::POST_INCR : 
@@ -287,6 +287,31 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
            return {"nil","nil"};
         }
 
+        LiteralValue visitLogicalExpr(LogicalExpr& expr) override {
+            LiteralValue left = evaluate(expr.left);
+
+            switch (expr.Operator.type) {
+                case TokenType::OR:
+                    if (isTruthy(left)) return left;
+                    return evaluate(expr.right);
+
+                case TokenType::AND:
+                    if (!isTruthy(left)) return left;
+                    return evaluate(expr.right);
+
+                case TokenType::PIPE_PIPE:
+                    if (isTruthy(left)) return { true, "boolean" };
+                    return { isTruthy(evaluate(expr.right)), "boolean" };
+
+                case TokenType::AMP_AMP:
+                    if (!isTruthy(left)) return { false, "boolean" };
+                    return { isTruthy(evaluate(expr.right)), "boolean" };
+
+                default:
+                    throw std::runtime_error("Invalid logical operator.");
+            }
+        }
+
         LiteralValue visitAssignExpr(AssignExpr& expr) override {
             LiteralValue value = evaluate(expr.value);
             environment->assign(expr.name,value);
@@ -315,9 +340,9 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         }
 
         LiteralValue visitIfStmt(IfStmt& statement) override {
-            if(std::any_cast<bool>(isTruthy(evaluate(statement.ifCondition)).first)){
+            if(isTruthy(evaluate(statement.ifCondition))){
                 execute(statement.thenBranch);
-            } else if(statement.elifCondition != nullptr && std::any_cast<bool>(isTruthy(evaluate(statement.elifCondition)).first)){
+            } else if(statement.elifCondition != nullptr && isTruthy(evaluate(statement.elifCondition))){
                 execute(statement.elifBranch);
             } else if(statement.elseBranch != nullptr){
                 execute(statement.elseBranch);

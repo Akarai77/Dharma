@@ -9,6 +9,7 @@ class BinaryExpr;
 class UnaryExpr;
 class GroupingExpr;
 class LiteralExpr;
+class LogicalExpr;
 class VariableExpr;
 
 using Expression = std::unique_ptr<Expr>;
@@ -25,6 +26,7 @@ public:
 	virtual LiteralValue visitUnaryExpr(UnaryExpr& expr) = 0;
 	virtual LiteralValue visitGroupingExpr(GroupingExpr& expr) = 0;
 	virtual LiteralValue visitLiteralExpr(LiteralExpr& expr) = 0;
+	virtual LiteralValue visitLogicalExpr(LogicalExpr& expr) = 0;
 	virtual LiteralValue visitVariableExpr(VariableExpr& expr) = 0;
 	virtual ~ExprVisitor() = default;
 };
@@ -87,6 +89,18 @@ public:
 	LiteralExpr(LiteralValue literal) : literal(literal) {}
 	LiteralValue accept(ExprVisitor& visitor) override {
 		return visitor.visitLiteralExpr(*this);
+	}
+};
+
+class LogicalExpr : public Expr {
+public:
+	Expression left;
+	Token Operator;
+	Expression right;
+
+	LogicalExpr(Expression left, Token Operator, Expression right) : left(std::move(left)), Operator(Operator), right(std::move(right)) {}
+	LiteralValue accept(ExprVisitor& visitor) override {
+		return visitor.visitLogicalExpr(*this);
 	}
 };
 

@@ -1,28 +1,30 @@
 /*
-program        → declaration* EOF ;
-declaration    → varDecl
-               | statement ;
-statement      → exprStmt
-               | ifStmt
-               | printStmt
-               | block ;
-ifStmt         → "if" "(" expression ")" statement
-               ( "else" statement )? ;
-block          → "{" declaration* "}" ;
-exprStmt       → expression ";" ;
-printStmt      → "print" expression ";" ;
-varDecl        → ("var"|"int"|"boolean"|"decimal"|"string") IDENTIFIER (":" (int"|"decimal"|"string"|"boolean"))? ( "=" expression )? ";";
-expression     → assignment ;
-assignment     → IDENTIFIER ("=" | "+=" | "-=" | "*=" | "/=" | "%=") assignment
-               | equality ;
-equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-term           → factor ( ( "-" | "+" ) factor )* ;
-factor         → unary ( ( "/" | "*" ) unary )* ;
-unary          → ( "!" | "-" | "++" | "--" ) unary
-               | primary ("++"|"--")? ;
-primary        → VARIABLE | "true" | "false" | "nil"
-               | "(" expression ")" ;
+program        -> declaration* EOF ;
+declaration    -> varDecl
+               |  statement ;
+statement      -> exprStmt
+               |  ifStmt
+               |  printStmt
+               |  block ;
+ifStmt         -> "if" "(" expression ")" statement
+               (  "else" statement )? ;
+block          -> "{" declaration* "}" ;
+exprStmt       -> expression ";" ;
+printStmt      -> "print" expression ";" ;
+varDecl        -> ("var"|"int"|"boolean"|"decimal"|"string") IDENTIFIER (":" (int"|"decimal"|"string"|"boolean"))? ( "=" expression )? ";";
+expression     -> assignment ;
+assignment     -> IDENTIFIER ("=" | "+=" | "-=" | "*=" | "/=" | "%=") assignment
+               |  logic_or ;
+logic_or       -> logic_and (("or" | "||") logic_and)*;
+logic_and      -> equality (("and" | "&&") equality)*;
+equality       -> comparison ( ( "!=" | "==" ) comparison )* ;
+comparison     -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+term           -> factor ( ( "-" | "+" ) factor )* ;
+factor         -> unary ( ( "/" | "*" ) unary )* ;
+unary          -> ( "!" | "-" | "++" | "--" ) unary
+               |  primary ("++"|"--")? ;
+primary        -> VARIABLE | "true" | "false" | "nil"
+               |  "(" expression ")" ;
 */
 
 #pragma once
@@ -326,8 +328,32 @@ class Parser{
             return expr;
         }
 
-        Expression getAssignment(std::optional<Token> type = std::nullopt){
+        Expression getLogicalAnd(std::optional<Token> type = std::nullopt){
             Expression expr = getEquality(type);
+
+            while(match({TokenType::AND,TokenType::AMP_AMP})){
+                Token Operator = previous();
+                Expression right = getEquality();
+                expr = makeExpr<LogicalExpr>(std::move(expr),Operator,std::move(right));
+            }
+
+            return expr;
+        }
+
+        Expression getLogicalOr(std::optional<Token> type = std::nullopt){
+            Expression expr = getLogicalAnd(type);
+
+            while(match({TokenType::OR,TokenType::PIPE_PIPE})){
+                Token Operator = previous();
+                Expression right = getLogicalAnd();
+                expr = makeExpr<LogicalExpr>(std::move(expr),Operator,std::move(right));
+            }
+
+            return expr;
+        }
+
+        Expression getAssignment(std::optional<Token> type = std::nullopt){
+            Expression expr = getLogicalOr(type);
 
             if(match({TokenType::EQUAL,TokenType::PLUS_EQUAL,TokenType::MINUS_EQUAL,TokenType::STAR_EQUAL,TokenType::SLASH_EQUAL,TokenType::PERCENT_EQUAL})){
                 Token Operator = previous();

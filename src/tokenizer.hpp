@@ -45,6 +45,7 @@ class Tokenizer{
             {"new"      ,TokenType::NEW},
             {"true"     ,TokenType::TRUE},
             {"false"    ,TokenType::FALSE},
+            {"nil"      ,TokenType::NIL},
             {"import"   ,TokenType::IMPORT},
             {"from"     ,TokenType::FROM},
             {"as"       ,TokenType::AS},
