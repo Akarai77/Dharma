@@ -11,6 +11,12 @@
 #include <vector>
 #include "error.hpp"
 
+#define BIN_OP(castType, op, retType) \
+    return {std::any_cast<castType>(leftval) op std::any_cast<castType>(rightval), retType};
+
+#define TYPE_BIN_OP(type, castType, op, retType) \
+    if(targetType == type) BIN_OP(castType, op, retType);
+
 class Interpreter : public ExprVisitor, public StmtVisitor{
     private:
         Environment* environment = new Environment();
@@ -191,82 +197,89 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
            switch(expr.Operator.type){
                
                case TokenType::GREATER:
-                    if(targetType == "int") return {std::any_cast<int>(leftval) > std::any_cast<int>(rightval), "boolean"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) > std::any_cast<double>(rightval), "boolean"};
-                    if(targetType == "string") return {std::any_cast<std::string>(leftval) > std::any_cast<std::string>(rightval),"boolean"};
-                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) > std::any_cast<bool>(rightval),"boolean"};
+                    TYPE_BIN_OP("int",int,>,"boolean");
+                    TYPE_BIN_OP("decimal",double,>,"boolean");
+                    TYPE_BIN_OP("string",std::string,>,"boolean");
+                    TYPE_BIN_OP("boolean",bool,>,"boolean");
                     break;
                 case TokenType::GREATER_EQUAL:
-                    if(targetType == "int") return {std::any_cast<int>(leftval) >= std::any_cast<int>(rightval), "boolean"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) >= std::any_cast<double>(rightval), "boolean"};
-                    if(targetType == "string") return {std::any_cast<std::string>(leftval) >= std::any_cast<std::string>(rightval),"boolean"};
-                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) >= std::any_cast<bool>(rightval),"boolean"};
+                    TYPE_BIN_OP("int",int,>=,"boolean");
+                    TYPE_BIN_OP("decimal",double,>=,"boolean");
+                    TYPE_BIN_OP("string",std::string,>=,"boolean");
+                    TYPE_BIN_OP("boolean",bool,>=,"boolean");
                     break;
                 case TokenType::LESS:
-                    if(targetType == "int") return {std::any_cast<int>(leftval) < std::any_cast<int>(rightval), "boolean"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) < std::any_cast<double>(rightval), "boolean"};
-                    if(targetType == "string") return {std::any_cast<std::string>(leftval) < std::any_cast<std::string>(rightval),"boolean"};
-                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) < std::any_cast<bool>(rightval),"boolean"};
+                    TYPE_BIN_OP("int",int,<,"boolean");
+                    TYPE_BIN_OP("decimal",double,<,"boolean");
+                    TYPE_BIN_OP("string",std::string,<,"boolean");
+                    TYPE_BIN_OP("boolean",bool,<,"boolean");
                     break;
                 case TokenType::LESS_EQUAL:
-                    if(targetType == "int") return {std::any_cast<int>(leftval) <= std::any_cast<int>(rightval), "boolean"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) <= std::any_cast<double>(rightval), "boolean"};
-                    if(targetType == "string") return {std::any_cast<std::string>(leftval) <= std::any_cast<std::string>(rightval),"boolean"};
-                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) <= std::any_cast<bool>(rightval),"boolean"};
+                    TYPE_BIN_OP("int",int,<=,"boolean");
+                    TYPE_BIN_OP("decimal",double,<=,"boolean");
+                    TYPE_BIN_OP("string",std::string,<=,"boolean");
+                    TYPE_BIN_OP("boolean",bool,<=,"boolean");
                     break;
                case TokenType::BANG_EQUAL:
-                    if(targetType == "int") return {std::any_cast<int>(leftval) != std::any_cast<int>(rightval), "boolean"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) != std::any_cast<double>(rightval), "boolean"};
-                    if(targetType == "string") return {std::any_cast<std::string>(leftval) != std::any_cast<std::string>(rightval),"boolean"};
-                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) != std::any_cast<bool>(rightval),"boolean"};
+                    TYPE_BIN_OP("int",int,!=,"boolean");
+                    TYPE_BIN_OP("decimal",double,!=,"boolean");
+                    TYPE_BIN_OP("string",std::string,!=,"boolean");
+                    TYPE_BIN_OP("boolean",bool,!=,"boolean");
                     break;
                case TokenType::EQUAL_EQUAL:
-                    if(targetType == "int") return {std::any_cast<int>(leftval) == std::any_cast<int>(rightval), "boolean"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) == std::any_cast<double>(rightval), "boolean"};
-                    if(targetType == "string") return {std::any_cast<std::string>(leftval) == std::any_cast<std::string>(rightval),"boolean"};
-                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) == std::any_cast<bool>(rightval),"boolean"};
+                    TYPE_BIN_OP("int",int,==,"boolean");
+                    TYPE_BIN_OP("decimal",double,==,"boolean");
+                    TYPE_BIN_OP("string",std::string,==,"boolean");
+                    TYPE_BIN_OP("boolean",bool,==,"boolean");
                     break;
 
                case TokenType::PLUS:
-                    if(targetType == "int") return {std::any_cast<int>(leftval) + std::any_cast<int>(rightval), "int"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) + std::any_cast<double>(rightval), "decimal"};
-                    if(left.second == "string" && right.second == "string") return {std::any_cast<std::string>(left.first) + std::any_cast<std::string>(right.first),"string"};
-                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) + std::any_cast<bool>(rightval),"int"};
+                    TYPE_BIN_OP("int",int,+,"int");
+                    TYPE_BIN_OP("decimal",double,+,"decimal");
+                    TYPE_BIN_OP("boolean",bool,+,"int");
+                    TYPE_BIN_OP("string",std::string,+,"string");
                     break;
                case TokenType::MINUS:
-                    if(targetType == "int") return {std::any_cast<int>(leftval) - std::any_cast<int>(rightval), "int"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) - std::any_cast<double>(rightval), "decimal"};
-                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) - std::any_cast<bool>(rightval),"int"};
+                    TYPE_BIN_OP("int",int,-,"int");
+                    TYPE_BIN_OP("decimal",double,-,"decimal");
+                    TYPE_BIN_OP("boolean",bool,-,"int");
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
                case TokenType::STAR:
-                    if(targetType == "int") return {std::any_cast<int>(leftval) * std::any_cast<int>(rightval), "int"};
-                    if(targetType == "decimal") return {std::any_cast<double>(leftval) * std::any_cast<double>(rightval), "decimal"};
-                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) * std::any_cast<bool>(rightval),"int"};
+                    TYPE_BIN_OP("int",int,*,"int");
+                    TYPE_BIN_OP("decimal",double,*,"decimal");
+                    TYPE_BIN_OP("boolean",bool,*,"int");
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
                case TokenType::SLASH:
                     if(targetType == "int"){
-                        if(std::any_cast<int>(rightval) != 0)
-                            return {std::any_cast<int>(leftval) / std::any_cast<int>(rightval), "int"};
+                        if(std::any_cast<int>(rightval) != 0) BIN_OP(int,/,"int");
                         throw RuntimeError(expr.Operator,"Divide by zero error");
                     }
                     if(targetType == "decimal"){
-                        if(std::any_cast<double>(rightval) != 0.0)
-                            return {std::any_cast<double>(leftval) / std::any_cast<double>(rightval), "int"};
+                        if(std::any_cast<double>(rightval) != 0.0) BIN_OP(double,/,"decimal");
                         throw RuntimeError(expr.Operator,"Divide by zero error");
                     }
                     if(targetType == "boolean"){
-                        if(std::any_cast<bool>(rightval) != false)
-                            return {std::any_cast<bool>(leftval) / std::any_cast<bool>(rightval), "int"};
+                        if(std::any_cast<bool>(rightval) != false) BIN_OP(bool,/,"int");
                         throw RuntimeError(expr.Operator,"Divide by zero error ('false' evaluates to '0')");
                     }
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
                case TokenType::PERCENT:
-                    if(targetType == "int") return {std::any_cast<int>(leftval) % std::any_cast<int>(rightval), "int"};
-                    if(targetType == "decimal") return {fmod(std::any_cast<double>(leftval),std::any_cast<double>(rightval)), "decimal"};
-                    if(targetType == "boolean") return {std::any_cast<bool>(leftval) % std::any_cast<bool>(rightval),"boolean"};
+                    if(targetType == "int"){
+                        if(std::any_cast<int>(rightval) != 0) BIN_OP(int,%,"int");
+                        throw RuntimeError(expr.Operator,"Modulo by zero error");
+                    }
+                    if(targetType == "decimal"){
+                        if(std::any_cast<double>(rightval) != 0.0) 
+                            return {fmod(std::any_cast<double>(leftval),std::any_cast<double>(rightval)),"decimal"};
+                        throw RuntimeError(expr.Operator,"Modulo by zero error");
+                    }
+                    if(targetType == "boolean"){
+                        if(std::any_cast<bool>(rightval) != false) BIN_OP(bool,%,"int");
+                        throw RuntimeError(expr.Operator,"Modulo by zero error ('false' evaluates to '0')");
+                    }
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
           }
