@@ -11,6 +11,8 @@ class ExprStmt;
 class PrintStmt;
 class VarStmt;
 class IfStmt;
+class WhileStmt;
+class ForStmt;
 
 using Statement = std::unique_ptr<Stmt>;
 
@@ -26,6 +28,8 @@ public:
 	virtual LiteralValue visitPrintStmt(PrintStmt& stmt) = 0;
 	virtual LiteralValue visitVarStmt(VarStmt& stmt) = 0;
 	virtual LiteralValue visitIfStmt(IfStmt& stmt) = 0;
+	virtual LiteralValue visitWhileStmt(WhileStmt& stmt) = 0;
+	virtual LiteralValue visitForStmt(ForStmt& stmt) = 0;
 	virtual ~StmtVisitor() = default;
 };
 
@@ -88,5 +92,29 @@ public:
 	IfStmt(Expression ifCondition, Statement thenBranch, Expression elifCondition, Statement elifBranch, Statement elseBranch) : ifCondition(std::move(ifCondition)), thenBranch(std::move(thenBranch)), elifCondition(std::move(elifCondition)), elifBranch(std::move(elifBranch)), elseBranch(std::move(elseBranch)) {}
 	LiteralValue accept(StmtVisitor& visitor) override {
 		return visitor.visitIfStmt(*this);
+	}
+};
+
+class WhileStmt : public Stmt {
+public:
+	Expression condition;
+	Statement body;
+
+	WhileStmt(Expression condition, Statement body) : condition(std::move(condition)), body(std::move(body)) {}
+	LiteralValue accept(StmtVisitor& visitor) override {
+		return visitor.visitWhileStmt(*this);
+	}
+};
+
+class ForStmt : public Stmt {
+public:
+	Statement initializer;
+	Expression condition;
+	Expression increment;
+	Statement body;
+
+	ForStmt(Statement initializer, Expression condition, Expression increment, Statement body) : initializer(std::move(initializer)), condition(std::move(condition)), increment(std::move(increment)), body(std::move(body)) {}
+	LiteralValue accept(StmtVisitor& visitor) override {
+		return visitor.visitForStmt(*this);
 	}
 };

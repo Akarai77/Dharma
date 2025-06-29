@@ -350,6 +350,34 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             return {"nil","nil"};
         }
 
+        LiteralValue visitWhileStmt(WhileStmt& statement) override {
+            while(isTruthy(evaluate(statement.condition))){
+                execute(statement.body);
+            }
+
+            return {"nil","nil"};
+        }
+
+        LiteralValue visitForStmt(ForStmt& statement) override {
+            if (statement.initializer != nullptr) {
+                execute(statement.initializer);
+            }
+
+            while (true) {
+                if (statement.condition != nullptr && !isTruthy(evaluate(statement.condition))) {
+                    break;
+                }
+
+                execute(statement.body);
+
+                if (statement.increment != nullptr) {
+                    evaluate(statement.increment);
+                }
+            }
+
+            return {"nil", "nil"};
+        }
+
         LiteralValue visitBlockStmt(BlockStmt& stmt) override {
             Environment* newEnvironment = new Environment(environment);
             executeBlock(stmt.statements, newEnvironment);

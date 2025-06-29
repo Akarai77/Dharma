@@ -4,10 +4,16 @@ declaration    -> varDecl
                |  statement ;
 statement      -> exprStmt
                |  ifStmt
+               |  whileStmt
+               |  forStmt
                |  printStmt
                |  block ;
 ifStmt         -> "if" "(" expression ")" statement
                (  "else" statement )? ;
+whileStmt      -> "while" "( expression )" statement ;
+forStmt        -> "for" "(" varDecl | exprStmt | ";" )
+                  expresion?    ";"
+                  expression? ")" statement ;
 block          -> "{" declaration* "}" ;
 exprStmt       -> expression ";" ;
 printStmt      -> "print" expression ";" ;
@@ -409,7 +415,7 @@ class Parser{
             return makeStmt<PrintStmt>(std::move(value));
         }
 
-        Statement getExprStmt(){
+        Statement getExprStatement(){
             Expression expression = getExpression();
             consume(TokenType::SEMICOLON, "Expect ';' after expression.");
             return makeStmt<ExprStmt>(std::move(expression));
@@ -438,7 +444,47 @@ class Parser{
             return makeStmt<IfStmt>(std::move(ifCondition),std::move(thenBranch),std::move(elifCondition),std::move(elifBranch),std::move(elseBranch));
         }
 
-        std::vector<Statement> getBlockStmt(){
+        Statement getWhileStatement(){
+            consume(TokenType::LEFT_PAREN,"Expect '(' after while.");
+            Expression condition = getExpression();
+            consume(TokenType::RIGHT_PAREN,"Expect ')' after condition.");
+            
+            Statement body = getStatement();
+
+            return makeStmt<WhileStmt>(std::move(condition),std::move(body));
+        }
+
+        Statement getForStatement(){
+            consume(TokenType::LEFT_PAREN,"Expect '(' after for.");
+
+            Statement initializer;
+            if(match({TokenType::SEMICOLON})) {
+                initializer = nullptr;
+            } else if(match({TokenType::TYPE})) {
+                initializer = getVarDeclaration(previous());
+            } else {
+                initializer = getExprStatement();
+            }
+
+            Expression condition = nullptr;
+            if(!check(TokenType::SEMICOLON)){
+                condition = getExpression();
+            }
+            consume(TokenType::SEMICOLON,"Expect ';' after loop condition.");
+
+            Expression increment = nullptr;
+            if(!check(TokenType::RIGHT_PAREN)){
+                increment = getExpression();
+            }
+            
+            consume(TokenType::RIGHT_PAREN,"Expect ')' after clauses.");
+            Statement body = getStatement();
+
+            return makeStmt<ForStmt>(std::move(initializer),std::move(condition),std::move(increment),std::move(body));
+
+        }
+
+        std::vector<Statement> getBlockStatement(){
             std::vector<Statement> statements;
 
             while(!isAtEnd() && !check(TokenType::RIGHT_BRACE)) {
@@ -452,9 +498,11 @@ class Parser{
         Statement getStatement(){
             if(match({TokenType::CHANT})) return getPrintStmt();
             if(match({TokenType::IF})) return getIfStatement();
-            if(match({TokenType::LEFT_BRACE})) return makeStmt<BlockStmt>(getBlockStmt());
+            if(match({TokenType::WHILE})) return getWhileStatement();
+            if(match({TokenType::FOR})) return getForStatement();
+            if(match({TokenType::LEFT_BRACE})) return makeStmt<BlockStmt>(getBlockStatement());
 
-            return getExprStmt();
+            return getExprStatement();
         }
 
         Statement getDeclaration(){
