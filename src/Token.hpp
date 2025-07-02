@@ -1,13 +1,9 @@
 #pragma once
-#include <any>
 #include <iostream>
-#include <optional>
 #include <string>
-#include <type_traits>
 #include <variant>
-#include"tokenType.hpp"
-using LiteralType = std::optional<std::variant<int, double, std::string, bool>>;
-using LiteralValue = std::pair<std::any,std::string>;
+#include "tokenType.hpp"
+#include "util.hpp"
 
 class Token{
     public:
@@ -32,28 +28,5 @@ std::ostream& operator<<(std::ostream& out, const Token& token) {
     }
     out<<"> ";
     return out;
-}
-
-LiteralValue getLiteralData(const LiteralType& expr) {
-    LiteralValue result;
-
-    std::visit([&result](auto&& val) {
-        using T = std::decay_t<decltype(val)>;
-        result.first = val;
-
-        if constexpr (std::is_same_v<T, int>) {
-            result.second = "int";
-        } else if constexpr (std::is_same_v<T, double>) {
-            result.second = "decimal";
-        } else if constexpr (std::is_same_v<T, std::string>) {
-            result.second = "string";
-        } else if constexpr (std::is_same_v<T, bool>) {
-            result.second = "boolean";
-        } else {
-            result.second = "nil";
-        }
-    }, expr.value());
-
-    return result;
 }
 
