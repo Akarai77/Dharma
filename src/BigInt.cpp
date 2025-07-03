@@ -286,41 +286,39 @@ class BigInt{
             return *this;
         }
 
-        std::pair<BigInt,BigInt> divmod(const BigInt& dividend,const BigInt& divisor) const {
-            BigInt quotient,remainder;
-
-            quotient.digits.resize(dividend.digits.size(),0);
-
-            for(int i=dividend.digits.size()-1;i>=0;i--){
-                remainder.digits.insert(remainder.digits.begin(),dividend.digits[i]);
+        std::pair<BigInt, BigInt> divmod(const BigInt& rhs) const {
+            BigInt quotient, remainder;
+            quotient.digits.resize(digits.size(), 0);
+            for (int i = digits.size() - 1; i >= 0; i--) {
+                remainder.digits.insert(remainder.digits.begin(), digits[i]);
                 remainder.removeLeadingZeros();
 
-                uint8_t low=0,high=9,qtDigit=0;
-                while(low<=high){
-                    uint8_t mid = (low+high)/2;
-                    BigInt trial = divisor*BigInt(mid);
-                    if(trial<=remainder){
+                uint8_t low = 0, high = 9, qtDigit = 0;
+                while (low <= high) {
+                    uint8_t mid = (low + high) / 2;
+                    BigInt trial = rhs * BigInt(mid);
+                    if (trial <= remainder) {
                         qtDigit = mid;
-                        low = mid+1;
+                        low = mid + 1;
                     } else {
-                        high = mid-1;
+                        high = mid - 1;
                     }
                 }
 
                 quotient.digits[i] = qtDigit;
-                remainder -= divisor * BigInt(qtDigit);
+                remainder -= rhs * BigInt(qtDigit);
             }
 
             quotient.removeLeadingZeros();
             remainder.removeLeadingZeros();
-            return {quotient,remainder};
+            return {quotient, remainder};
         }
 
         BigInt operator/(const BigInt& rhs) const {
             if(isZero()) return BigInt("0");
             if(*this < rhs) return BigInt("0");
             
-            auto [quotient,_] = divmod(*this,rhs);
+            auto [quotient,_] = this->divmod(rhs);
             quotient.isNegative = (isNegative != rhs.isNegative);
             return quotient;
         }
@@ -334,7 +332,7 @@ class BigInt{
             if(isZero()) return BigInt("0");
             if(*this < rhs) return *this;
 
-            auto [_,remainder] = divmod(*this,rhs);
+            auto [_,remainder] = this->divmod(rhs);
             remainder.isNegative = isNegative;
             return remainder;
         }
