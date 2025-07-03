@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
@@ -62,6 +63,14 @@ class BigInt{
 
             return out;
 
+        }
+
+        std::string toString() const {
+            std::string res;
+            for(auto it = digits.rbegin();it != digits.rend();it++){
+                res.push_back(*it+'0');
+            }
+            return res;
         }
 
         bool operator>(const BigInt& rhs) const {
@@ -257,7 +266,7 @@ class BigInt{
 
         BigInt karatsubaMultiply(const BigInt& rhs) const {
             size_t n = std::max(digits.size(),rhs.digits.size());
-            if(n<=2) return naiveMultiply(rhs);
+            if(n<=32) return naiveMultiply(rhs);
 
             size_t m = n/2;
 
@@ -342,10 +351,58 @@ class BigInt{
             return *this;
         }
 
-};
+        BigInt max(const BigInt& rhs) const {
+            return (*this > rhs) ? *this : rhs;
+        }
 
-int main(){
-    BigInt i("100");
-    BigInt j("2");
-    std::cout<<i<<" "<<j<<" "<<(++i)<<i;
-}
+        BigInt min(const BigInt& rhs) const {
+            return (*this < rhs) ? *this : rhs;
+        }
+
+        BigInt abs() const {
+            BigInt temp = *this;
+            temp.isNegative = false;
+            return temp;
+        }
+
+        BigInt pow(BigInt exponent) const {
+            if (exponent.isZero()) return BigInt(1);
+            BigInt base = *this;
+            BigInt result(1);
+
+            while (!exponent.isZero()) {
+                if (exponent.digits[0] % 2 != 0) result *= base;
+                base *= base;
+                exponent = exponent / BigInt(2);
+            }
+
+            return result;
+        }
+
+        BigInt gcd(const BigInt& rhs) const {
+            BigInt a,b;
+            a = *this;
+            b = rhs;
+            
+            while(!a.isZero()){
+                BigInt temp = a;
+                a = b % a;
+                b = temp;
+            }
+
+            return b;
+        }
+
+        BigInt lcm(const BigInt& rhs) const {
+            return (*this * rhs).abs() / this->gcd(rhs);
+        }
+
+        bool isEven() const {
+            return digits[0] % 2 == 0;
+        }
+
+        bool isOdd() const {
+            return digits[0] % 2 != 0;
+        }
+
+};
