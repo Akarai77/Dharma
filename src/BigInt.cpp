@@ -16,6 +16,7 @@ class BigInt{
     public:
         BigInt() : digits(1,0), isNegative(false) {}
         BigInt(const std::string& str) { parseFromString(str); }
+        BigInt(uint8_t digit) { digits.push_back(digit); }
         BigInt(int num) { *this = BigInt(std::to_string(num)); }
         BigInt(int64_t num) { *this = BigInt(std::to_string(num)); }
 
@@ -87,7 +88,19 @@ class BigInt{
         }
 
         bool operator==(const BigInt& rhs) const {
-            return isNegative == rhs.isNegative && digits == rhs.digits;
+            return (isNegative == rhs.isNegative) && (digits == rhs.digits);
+        }
+
+        bool operator>=(const BigInt& rhs) const {
+            return (*this > rhs) || (*this == rhs);
+        }
+
+        bool operator<=(const BigInt& rhs) const {
+            return (*this < rhs) || (*this == rhs);
+        }
+
+        bool operator!=(const BigInt& rhs) const {
+            return !(*this == rhs);
         }
 
         BigInt operator+(const BigInt& rhs) const {
@@ -125,6 +138,13 @@ class BigInt{
             result.removeLeadingZeros();
             return result;
         }
+
+        BigInt operator+=(const BigInt& rhs){
+            *this = *this + rhs;
+            return *this;
+        }
+
+       
 
         BigInt operator-(const BigInt& rhs) const {
             if(isZero()) {
@@ -174,6 +194,13 @@ class BigInt{
             result.isNegative = isNegative;
             return result;
         }
+
+        BigInt operator-=(const BigInt& rhs){
+            *this = *this - rhs;
+            return *this;
+        }
+
+       
 
         std::pair<BigInt, BigInt> splitAt(size_t index) const {
             BigInt high,low;
@@ -236,10 +263,73 @@ class BigInt{
             return result;
         }
 
+        BigInt operator*=(const BigInt& rhs){
+            *this = *this * rhs;
+            return *this;
+        }
+
+        std::pair<BigInt,BigInt> divmod(const BigInt& dividend,const BigInt& divisor) const {
+            BigInt quotient,remainder;
+
+            quotient.digits.resize(dividend.digits.size(),0);
+
+            for(int i=dividend.digits.size()-1;i>=0;i--){
+                remainder.digits.insert(remainder.digits.begin(),dividend.digits[i]);
+                remainder.removeLeadingZeros();
+
+                uint8_t low=0,high=9,qtDigit=0;
+                while(low<=high){
+                    uint8_t mid = (low+high)/2;
+                    BigInt trial = divisor*BigInt(mid);
+                    if(trial<=remainder){
+                        qtDigit = mid;
+                        low = mid+1;
+                    } else {
+                        high = mid-1;
+                    }
+                }
+
+                quotient.digits[i] = qtDigit;
+                remainder -= divisor * BigInt(qtDigit);
+            }
+
+            quotient.removeLeadingZeros();
+            remainder.removeLeadingZeros();
+            return {quotient,remainder};
+        }
+
+        BigInt operator/(const BigInt& rhs) const {
+            if(isZero()) return BigInt("0");
+            if(*this < rhs) return BigInt("0");
+            
+            auto [quotient,_] = divmod(*this,rhs);
+            quotient.isNegative = (isNegative != rhs.isNegative);
+            return quotient;
+        }
+
+        BigInt operator/=(const BigInt& rhs){
+            *this = *this / rhs;
+            return *this;
+        }
+
+        BigInt operator%(const BigInt& rhs) const {
+            if(isZero()) return BigInt("0");
+            if(*this < rhs) return *this;
+
+            auto [_,remainder] = divmod(*this,rhs);
+            remainder.isNegative = isNegative;
+            return remainder;
+        }
+
+        BigInt operator%=(const BigInt& rhs){
+            *this = *this % rhs;
+            return *this;
+        }
+
 };
 
 int main(){
-    BigInt i("-02");
-    BigInt j("100");
-    std::cout<<i<<" "<<j<<" "<<(i*j);
+    BigInt i("100");
+    BigInt j("2");
+    std::cout<<i<<" "<<j<<" "<<(++i)<<i;
 }
