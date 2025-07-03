@@ -144,7 +144,16 @@ class BigInt{
             return *this;
         }
 
-       
+        BigInt& operator++(){
+            *this += BigInt(1);
+            return *this;
+        }
+
+        BigInt operator++(int){
+            BigInt temp = *this;
+            *this += BigInt(1);
+            return temp;
+        }
 
         BigInt operator-(const BigInt& rhs) const {
             if(isZero()) {
@@ -200,7 +209,16 @@ class BigInt{
             return *this;
         }
 
-       
+        BigInt& operator--(){
+            *this -= BigInt(1);
+            return *this;
+        }
+
+        BigInt operator--(int){
+            BigInt temp = *this;
+            *this -= BigInt(1);
+            return temp;
+        }
 
         std::pair<BigInt, BigInt> splitAt(size_t index) const {
             BigInt high,low;
