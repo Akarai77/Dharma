@@ -9,75 +9,95 @@
 #include <utility>
 #include <vector>
 
-class BigInt{
+class BigInt {
     private:
         std::vector<uint8_t> digits;
         bool isNegative = false;
 
     public:
-        BigInt() : digits(1,0), isNegative(false) {}
+        BigInt() : digits(1, 0), isNegative(false) {}
         BigInt(const std::string& str) { parseFromString(str); }
         BigInt(uint8_t digit) { digits.push_back(digit); }
         BigInt(int num) { *this = BigInt(std::to_string(num)); }
         BigInt(int64_t num) { *this = BigInt(std::to_string(num)); }
 
-        void parseFromString(const std::string& str){
+        void removeLeadingZeros() {
+            while (digits.size() > 1 && digits.back() == 0) {
+                digits.pop_back();
+            }
+
+            if (digits.size() == 1 && digits[0] == 0) {
+                isNegative = false;
+            }
+        }
+
+        void parseFromString(const std::string& str) {
             digits.clear();
             isNegative = false;
-            
+
             size_t start = 0;
-            if(str[0] == '-'){ 
+            if(str[0]=='+'){
+                start = 1;
+            }
+            if (str[0] == '-') {
                 isNegative = true;
                 start = 1;
             }
 
-            for(size_t i=str.size();i>start;i--) {
-                char c = str[i-1];
-                if(!std::isdigit(c)) throw std::invalid_argument("Invalid digit in BigInt string.");
-                digits.push_back(c-'0');
+            for (size_t i = str.size(); i > start; i--) {
+                char c = str[i - 1];
+                if (!std::isdigit(c)) throw std::invalid_argument("Invalid digit in BigInt string.");
+                digits.push_back(c - '0');
             }
 
             removeLeadingZeros();
-        }
-
-        void removeLeadingZeros(){
-            while(digits.size() > 1 && digits.back() == 0){
-                digits.pop_back();
-            }
-
-            if(digits.size() == 1 && digits[0] == 0){
-                isNegative = false;
-            }
         }
 
         bool isZero() const {
             return digits.size() == 1 && digits[0] == 0;
         }
 
-        friend std::ostream& operator<<(std::ostream& out, const BigInt& integer){
-            if(integer.isNegative)
+        bool isPositive() const {
+            return !isNegative;
+        }
+
+        void flipSign() {
+            if (!isZero()) isNegative = !isNegative;
+        }
+
+        void setSign(bool sign) {
+            isNegative = sign;
+        }
+
+        friend std::ostream& operator<<(std::ostream& out, const BigInt& integer) {
+            if (integer.isNegative)
                 out << "-";
 
-            for(auto it = integer.digits.rbegin(); it != integer.digits.rend();it++)
-                out<<static_cast<int>(*it);
+            for (auto it = integer.digits.rbegin(); it != integer.digits.rend(); it++)
+                out << static_cast<int>(*it);
 
             return out;
-
         }
 
         std::string toString() const {
-            std::string res;
-            for(auto it = digits.rbegin();it != digits.rend();it++){
-                res.push_back(*it+'0');
+            std::string res = isNegative ? "-" : "";
+            for (auto it = digits.rbegin(); it != digits.rend(); it++) {
+                res.push_back(*it + '0');
             }
             return res;
+        }
+
+        BigInt operator-() const {
+            BigInt temp = *this;
+            temp.flipSign();
+            return temp;
         }
 
         bool operator>(const BigInt& rhs) const {
             if (isNegative != rhs.isNegative)
                 return !isNegative;
 
-            bool result;
+            bool result = false;
             if (digits.size() != rhs.digits.size()) {
                 result = digits.size() > rhs.digits.size();
             } else {
@@ -93,7 +113,7 @@ class BigInt{
         }
 
         bool operator<(const BigInt& rhs) const {
-            return !(*this > rhs || *this == rhs);
+            return !(*this >= rhs);
         }
 
         bool operator==(const BigInt& rhs) const {
@@ -113,12 +133,11 @@ class BigInt{
         }
 
         BigInt operator+(const BigInt& rhs) const {
-            if(isZero()) return rhs;
-            if(rhs.isZero()) return *this;
+            if (isZero()) return rhs;
+            if (rhs.isZero()) return *this;
 
             BigInt result;
             result.digits.clear();
-
             if (isNegative == rhs.isNegative) {
                 result.isNegative = isNegative;
                 size_t maxlen = std::max(digits.size(), rhs.digits.size());
@@ -131,112 +150,95 @@ class BigInt{
                     carry = sum / 10;
                     result.digits.push_back(sum % 10);
                 }
-            } else {
-                BigInt a = *this, b = rhs;
-                a.isNegative = false;
-                b.isNegative = false;
-                if (a > b) {
-                    result = a - b;
-                    result.isNegative = this->isNegative;
-                } else {
-                    result = b - a;
-                    result.isNegative = rhs.isNegative;
-                }
+
+                result.removeLeadingZeros();
+                return result;
             }
 
-            result.removeLeadingZeros();
+            result = *this - (-rhs);
+            result.isNegative = !isNegative;
             return result;
         }
 
-        BigInt operator+=(const BigInt& rhs){
+        BigInt operator+=(const BigInt& rhs) {
             *this = *this + rhs;
             return *this;
         }
 
-        BigInt& operator++(){
+        BigInt& operator++() {
             *this += BigInt(1);
             return *this;
         }
 
-        BigInt operator++(int){
+        BigInt operator++(int) {
             BigInt temp = *this;
-            *this += BigInt(1);
+            ++(*this);
             return temp;
         }
 
         BigInt operator-(const BigInt& rhs) const {
-            if(isZero()) {
-                BigInt res = rhs;
-                res.isNegative = res.isNegative ? false : true;
-                return res;
-            }
-            if(rhs.isZero()) return *this;
+            if (isZero()) return -rhs;
+            if (rhs.isZero()) return *this;
 
-            if (isNegative != rhs.isNegative) {
-                BigInt temp = rhs;
-                temp.isNegative = !rhs.isNegative;
-                return *this + temp;
-            }
+            if (isNegative != rhs.isNegative) return *this + (-rhs);
 
             BigInt a = *this;
             BigInt b = rhs;
-            a.isNegative = false;
-            b.isNegative = false;
-
-            BigInt result;
+            a.isNegative = b.isNegative = false;
 
             if (a < b) {
-                result = b - a;
+                BigInt result = b - a;
                 result.isNegative = !isNegative;
                 return result;
-            }
+            } else {
+                BigInt result;
+                result.digits.clear();
+                uint8_t borrow = 0;
 
-            result.digits.clear();
-            uint8_t borrow = 0;
+                for (size_t i = 0; i < a.digits.size(); ++i) {
+                    int lhsDigit = a.digits[i] - borrow;
+                    int rhsDigit = (i < b.digits.size()) ? b.digits[i] : 0;
 
-            for (size_t i = 0; i < a.digits.size(); ++i) {
-                int lhsDigit = a.digits[i] - borrow;
-                int rhsDigit = (i < b.digits.size()) ? b.digits[i] : 0;
+                    if (lhsDigit < rhsDigit) {
+                        lhsDigit += 10;
+                        borrow = 1;
+                    } else {
+                        borrow = 0;
+                    }
 
-                if (lhsDigit < rhsDigit) {
-                    lhsDigit += 10;
-                    borrow = 1;
-                } else {
-                    borrow = 0;
+                    result.digits.push_back(lhsDigit - rhsDigit);
                 }
 
-                result.digits.push_back(lhsDigit - rhsDigit);
+                result.removeLeadingZeros();
+                result.isNegative = isNegative;
+                return result;
             }
-
-            result.removeLeadingZeros();
-            result.isNegative = isNegative;
-            return result;
         }
 
-        BigInt operator-=(const BigInt& rhs){
+        BigInt operator-=(const BigInt& rhs) {
             *this = *this - rhs;
             return *this;
         }
 
-        BigInt& operator--(){
+        BigInt& operator--() {
             *this -= BigInt(1);
             return *this;
         }
 
-        BigInt operator--(int){
+        BigInt operator--(int) {
             BigInt temp = *this;
-            *this -= BigInt(1);
+            --(*this);
             return temp;
         }
 
         std::pair<BigInt, BigInt> splitAt(size_t index) const {
-            BigInt high,low;
-            low.digits.assign(digits.begin(),digits.begin()+std::min(index,digits.size()));
-            if(index < digits.size())
-                high.digits.assign(digits.begin()+index,digits.end());
+            BigInt high, low;
+            low.digits.assign(digits.begin(), digits.begin() + std::min(index, digits.size()));
+            if (index < digits.size())
+                high.digits.assign(digits.begin() + index, digits.end());
             high.removeLeadingZeros();
             low.removeLeadingZeros();
-            return {high,low};
+            return {high, low};
         }
 
         BigInt shiftLeft(size_t index) const {
@@ -320,15 +322,17 @@ class BigInt{
 
             quotient.removeLeadingZeros();
             remainder.removeLeadingZeros();
+            quotient.isNegative = (isNegative != rhs.isNegative);
+            remainder.isNegative = isNegative;
+            if (remainder.isZero()) remainder.isNegative = false;
             return {quotient, remainder};
         }
 
         BigInt operator/(const BigInt& rhs) const {
             if(isZero()) return BigInt("0");
             if(*this < rhs) return BigInt("0");
-            
+
             auto [quotient,_] = this->divmod(rhs);
-            quotient.isNegative = (isNegative != rhs.isNegative);
             return quotient;
         }
 
@@ -342,7 +346,6 @@ class BigInt{
             if(*this < rhs) return *this;
 
             auto [_,remainder] = this->divmod(rhs);
-            remainder.isNegative = isNegative;
             return remainder;
         }
 
@@ -383,7 +386,7 @@ class BigInt{
             BigInt a,b;
             a = *this;
             b = rhs;
-            
+
             while(!a.isZero()){
                 BigInt temp = a;
                 a = b % a;
