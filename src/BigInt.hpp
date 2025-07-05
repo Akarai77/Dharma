@@ -61,6 +61,10 @@ class BigInt {
             return !isNegative;
         }
 
+        int length() const {
+            return digits.size();
+        }
+
         void flipSign() {
             if (!isZero()) isNegative = !isNegative;
         }
@@ -322,17 +326,16 @@ class BigInt {
 
             quotient.removeLeadingZeros();
             remainder.removeLeadingZeros();
-            quotient.isNegative = (isNegative != rhs.isNegative);
-            remainder.isNegative = isNegative;
-            if (remainder.isZero()) remainder.isNegative = false;
             return {quotient, remainder};
         }
 
         BigInt operator/(const BigInt& rhs) const {
+            if(rhs.isZero()) throw std::runtime_error("Division by zero attempted.");
             if(isZero()) return BigInt("0");
-            if(*this < rhs) return BigInt("0");
+            if(this->abs() < rhs.abs()) return BigInt("0");
 
-            auto [quotient,_] = this->divmod(rhs);
+            auto [quotient,_] = this->abs().divmod(rhs.abs());
+            quotient.isNegative = isNegative != rhs.isNegative;
             return quotient;
         }
 
@@ -342,10 +345,11 @@ class BigInt {
         }
 
         BigInt operator%(const BigInt& rhs) const {
+            if(rhs.isZero()) throw std::runtime_error("Modulo by zero attempted.");
             if(isZero()) return BigInt("0");
-            if(*this < rhs) return *this;
+            if(this->abs() < rhs.abs()) return *this;
 
-            auto [_,remainder] = this->divmod(rhs);
+            auto [_,remainder] = this->abs().divmod(rhs.abs());
             return remainder;
         }
 
