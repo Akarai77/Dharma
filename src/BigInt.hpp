@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -9,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+class BigDecimal;
+
 class BigInt {
     private:
         std::vector<uint8_t> digits;
@@ -18,6 +22,7 @@ class BigInt {
         BigInt() : digits(1, 0), isNegative(false) {}
         BigInt(const std::string& str) { parseFromString(str); }
         BigInt(uint8_t digit) { digits.push_back(digit); }
+        BigInt(size_t digit) {digits.push_back(digit); }
         BigInt(int num) { *this = BigInt(std::to_string(num)); }
         BigInt(int64_t num) { *this = BigInt(std::to_string(num)); }
 
@@ -404,6 +409,16 @@ class BigInt {
             return (*this * rhs).abs() / this->gcd(rhs);
         }
 
+        BigInt factorial() const {
+            BigInt temp = *this;
+            BigInt exp = *this;
+            while(exp > 1){
+                temp *= --exp;
+            }
+
+            return temp;
+        }
+
         bool isEven() const {
             return digits[0] % 2 == 0;
         }
@@ -411,5 +426,34 @@ class BigInt {
         bool isOdd() const {
             return digits[0] % 2 != 0;
         }
+
+        BigInt integerSqrt() const {
+            if (isNegative)
+                throw std::invalid_argument("Cannot compute square root of negative BigInt");
+            if (isZero())
+                return BigInt(0);
+
+            BigInt x = *this;
+            BigInt y(0);
+            BigInt p(1);
+
+            while (p * BigInt(4) <= x)
+                p *= BigInt(4);
+
+            while (!p.isZero()) {
+                if (x >= y + p) {
+                    x -= (y + p);
+                    y = y / BigInt(2) + p;
+                } else {
+                    y /= BigInt(2);
+                }
+                p /= BigInt(4);
+            }
+
+            return y;
+        }
+
+        BigDecimal sqrt(size_t precision = 6) const;
+        BigInt operator=(const BigDecimal& rhs);
 
 };
