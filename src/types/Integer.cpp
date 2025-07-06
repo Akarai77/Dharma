@@ -233,6 +233,63 @@ class Integer {
                 }, rhs.value);
             }, value);
         }
+        Integer divide(BigInt lhs, BigInt rhs) const {
+            BigInt res = lhs / rhs;
+            return toInteger(res);
+        }
+
+        Integer divide(BigInt lhs, int64_t rhs) const {
+            BigInt res = lhs / BigInt(rhs);
+            return toInteger(res);
+        }
+
+        Integer divide(int64_t lhs, BigInt rhs) const {
+            BigInt res = BigInt(lhs) / rhs;
+            return toInteger(res);
+        }
+
+        Integer divide(BigInt lhs, int rhs) const {
+            BigInt res = lhs / BigInt(rhs);
+            return toInteger(res);
+        }
+
+        Integer divide(int lhs, BigInt rhs) const {
+            BigInt res = BigInt(lhs) / rhs;
+            return toInteger(res);
+        }
+
+        Integer divide(int lhs, int rhs) const {
+            int64_t result = static_cast<int64_t>(lhs) / static_cast<int64_t>(rhs);
+            if (result > std::numeric_limits<int>::max() || result < std::numeric_limits<int>::min())
+                return Integer(static_cast<int64_t>(result));
+            return Integer(static_cast<int>(result));
+        }
+
+        Integer divide(int64_t lhs, int64_t rhs) const {
+            BigInt res = BigInt(lhs) / BigInt(rhs);
+            if (res.fitsInInt64())
+                return Integer(res.toInt64());
+            return Integer(res);
+        }
+
+        Integer divide(int64_t lhs, int rhs) const {
+            return divide(lhs, static_cast<int64_t>(rhs));
+        }
+
+        Integer divide(int lhs, int64_t rhs) const {
+            return divide(static_cast<int64_t>(lhs), rhs);
+        }
+
+        Integer operator/(const Integer& rhs) const {
+            return std::visit([&](const auto& lhsVal) -> Integer {
+                return std::visit([&](const auto& rhsVal) -> Integer {
+                    if(rhsVal == 0)
+                        throw std::runtime_error("Division by zero attempted");
+                    return divide(lhsVal, rhsVal);
+                }, rhs.value);
+            }, value);
+        }
+
 };
 
 
