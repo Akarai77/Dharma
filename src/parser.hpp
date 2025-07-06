@@ -17,7 +17,7 @@ forStmt        -> "for" "(" varDecl | exprStmt | ";" )
 block          -> "{" declaration* "}" ;
 exprStmt       -> expression ";" ;
 printStmt      -> "print" expression ";" ;
-varDecl        -> ("var"|"int"|"boolean"|"decimal"|"string") IDENTIFIER (":" (int"|"decimal"|"string"|"boolean"))? ( "=" expression )? ";";
+varDecl        -> ("var"|"int"|"boolean"|"decimal"|"BigDecimal"|"string") IDENTIFIER (":" (int"|"decimal"|"BigDecimal"|string"|"boolean"))? ( "=" expression )? ";";
 expression     -> assignment ;
 assignment     -> IDENTIFIER ("=" | "+=" | "-=" | "*=" | "/=" | "%=") assignment
                |  logic_or ;
@@ -34,6 +34,7 @@ primary        -> VARIABLE | "true" | "false" | "nil"
 */
 
 #pragma once
+#include "util.hpp"
 #include "Token.hpp"
 #include "error.hpp"
 #include "expr.hpp"
@@ -111,11 +112,11 @@ class Parser{
 
         bool isConvertible(std::string from, std::string to) {
             static std::unordered_map<std::string, std::vector<std::string>> conversionTable = {
-                {"int", {"decimal"}},
-                {"decimal", {"int"}},
-                {"boolean", {"int"}},
-                {"int", {"boolean"}},
-                {"nil",{"int","decimal","boolean"}}
+                {"decimal", {"integer","bigDecimal"}},
+                {"bigDecimal", {"integer","decimal"}},
+                {"integer", {"decimal","bigDecimal,boolean"}},
+                {"boolean", {"integer"}},
+                {"nil",{"integer","decimal","boolean","bigDecimal"}}
             };
 
             auto it = conversionTable.find(from);
@@ -127,12 +128,16 @@ class Parser{
         }
 
         std::any performConversion(std::any value, const std::string& from, const std::string& to) {
-            if(from == "decimal" && to == "int") return static_cast<int>(std::any_cast<double>(value));
-            if(from == "int" && to == "decimal") return static_cast<double>(std::any_cast<int>(value));
-            if(from == "int" && to == "boolean") return static_cast<bool>(std::any_cast<int>(value));
-            if(from == "boolean" && to == "int") return static_cast<int>(std::any_cast<bool>(value));
+            if(from == "decimal" && to == "integer") return Integer(std::any_cast<double>(value));
+            if(from == "decimal" && to == "bigDecimal") return BigDecimal(std::any_cast<double>(value));
+            if(from == "bigDecimal" && to == "integer") return Integer(std::any_cast<BigDecimal>(value));
+            if(from == "bigDecimal" && to == "decimal") return (std::any_cast<BigDecimal>(value)).toDecimal();
+            if(from == "integer" && to == "decimal") return (std::any_cast<Integer>(value)).toDecimal();
+            if(from == "integer" && to == "bigDecimal") return BigDecimal(std::any_cast<Integer>(value));
+            if(from == "integer" && to == "boolean") return (std::any_cast<Integer>(value)).toBool();
+            if(from == "boolean" && to == "integer") return Integer(std::any_cast<bool>(value));
             if(from == "nil"){
-                if(to == "int" || to == "decimal") return 0;
+                if(to == "integer" || to == "decimal" || to == "bigDecimal") return 0;
                 if(to == "boolean") return false;
             }
             throw std::runtime_error("Unsupported implicit conversion.");
@@ -231,8 +236,9 @@ class Parser{
                 LiteralValue lit = getLiteralData(previous().literal);
 
                 if (expectedType.has_value() && expectedType.value().lexeme != "var") {
-                    if(expectedType.value().lexeme == "int") previous().type = TokenType::INT;
+                    if(expectedType.value().lexeme == "integer") previous().type = TokenType::INTEGER;
                     if(expectedType.value().lexeme == "decimal") previous().type = TokenType::DECIMAL;
+                    if(expectedType.value().lexeme == "bigDecimal") previous().type = TokenType::BIGDECIMAL;
                     if(expectedType.value().lexeme == "string") previous().type = TokenType::STRING;
                     if(expectedType.value().lexeme == "boolean") previous().type = TokenType::BOOLEAN;
                     std::string expected = expectedType->lexeme;

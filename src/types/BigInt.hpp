@@ -12,7 +12,6 @@
 #include <vector>
 
 class BigDecimal;
-
 class BigInt {
     private:
         std::vector<uint8_t> digits;
@@ -481,6 +480,26 @@ class BigInt {
                 value = value * 10 + *it;
             }
             return isNegative ? -value : value;
+        }
+
+        double toDecimal() const {
+            if (*this == BigInt(0)) return 0.0;
+
+            const size_t MAX_DIGITS = 17;
+            double result = 0.0;
+
+            size_t len = digits.size();
+            size_t i = 0;
+
+            while (i < std::min(len, MAX_DIGITS)) {
+                result = result * 10 + digits[i];
+                ++i;
+            }
+
+            int exponent = static_cast<int>(len - i);
+            result *= std::pow(10.0, exponent);
+
+            return isNegative ? -result : result;
         }
 
         BigDecimal sqrt(size_t precision = 6) const;

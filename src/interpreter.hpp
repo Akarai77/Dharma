@@ -56,9 +56,10 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
         int getPriority(std::string type){
             if(type == "boolean") return 0;
-            if(type == "int") return 1;
+            if(type == "integer") return 1;
             if(type == "decimal") return 2;
-            if(type == "string") return 3;
+            if(type == "bigDecimal") return 3;
+            if(type == "string") return 4;
             return -1;
         }
 
@@ -68,17 +69,23 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             if(currentType == targetType) return operand;
             //warn nil->othertype
             if(currentType == "nil"){
-                if(targetType == "int" || targetType == "decimal") return {0,targetType};
+                if(targetType == "integer" || targetType == "decimal" || targetType == "bigDecimal") return {0,targetType};
                 if(targetType == "boolean") return {false,"boolean"};
             }
             if(currentType == "boolean"){
                 bool val = std::any_cast<bool>(value);
-                if(targetType == "int") return {static_cast<int>(val),"int"};
+                if(targetType == "integer") return {Integer(val),"integer"};
                 if(targetType == "decimal") return {static_cast<double>(val),"decimal"};
+                if(targetType == "bigDecimal") return {BigDecimal(val),"bigDecimal"};
             }
-            if(currentType == "int"){
-                int val = std::any_cast<int>(value);
-                if(targetType == "decimal") return {static_cast<double>(val),"decimal"};
+            if(currentType == "integer"){
+                Integer val = std::any_cast<Integer>(value);
+                if(targetType == "decimal") return {val.toDecimal(),"decimal"};
+                if(targetType == "bigDecimal") return {val.toBigDecimal(),"bigDecimal"};
+            }
+            if(currentType == "decimal"){
+                double val = std::any_cast<double>(value);
+                if(targetType == "BigDecimal") return {BigDecimal(val),"bigDecimal"};
             }
             
             throw err;
@@ -91,10 +98,12 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
             if (result.second == "boolean") {
                 text = std::any_cast<bool>(result.first) ? "true" : "false";
-            } else if (result.second == "int") {
-                text = std::to_string(std::any_cast<int>(result.first));
+            } else if (result.second == "integer") {
+                text = (std::any_cast<Integer>(result.first)).toString();
             } else if (result.second == "decimal") {
                 text = std::to_string(std::any_cast<double>(result.first));
+            } else if(result.second == "bigDecimal") {
+                text = (std::any_cast<BigDecimal>(result.first)).toString();
             } else if (result.second == "string") {
                 text = "'"+std::any_cast<std::string>(result.first)+"'";
             } else {
@@ -117,10 +126,12 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
             switch(expr.Operator.type){
                 case TokenType::MINUS : 
-                    if(value.second == "int")
-                        return  {- std::any_cast<int>(value.first),"int"};
+                    if(value.second == "integer")
+                        return  {- std::any_cast<Integer>(value.first),"integer"};
                     if(value.second == "decimal")
                         return {- std::any_cast<double>(value.first),"decimal"};
+                    if(value.second == "bigDecimal")
+                        return {- std::any_cast<BigDecimal>(value.first),"bigDecimal"};
                     throw RuntimeError(expr.Operator,"Unsupported operand");
 
                 case TokenType::BANG :
@@ -132,10 +143,12 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                         LiteralValue original = value;
                         LiteralValue incrementedValue;
 
-                        if(value.second == "int")
-                            incrementedValue = {std::any_cast<int>(value.first)+1,"int"};
+                        if(value.second == "integer")
+                            incrementedValue = {++std::any_cast<Integer>(value.first),"integer"};
                         else if(value.second == "decimal")
                             incrementedValue = {std::any_cast<double>(value.first)+1,"decimal"};
+                        else if(value.second == "bigDecimal")
+                            incrementedValue = {++std::any_cast<BigDecimal>(value.first),"decimal"};
                         else
                             throw RuntimeError(expr.Operator, "Invalid operand type for '++'");
 
@@ -158,10 +171,12 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                         LiteralValue original = value;
                         LiteralValue decrementedValue;
 
-                        if(value.second == "int")
-                            decrementedValue = {std::any_cast<int>(value.first)-1,"int"};
+                        if(value.second == "integer")
+                            decrementedValue = {--std::any_cast<Integer>(value.first),"integer"};
                         else if(value.second == "decimal")
                             decrementedValue = {std::any_cast<double>(value.first)-1,"decimal"};
+                        else if(value.second == "bigDecimal")
+                            decrementedValue = {--std::any_cast<BigDecimal>(value.first),"bigDecimal"};
                         else
                             throw RuntimeError(expr.Operator, "Invalid operand type for '--'");
 
@@ -197,78 +212,91 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
            switch(expr.Operator.type){
                
                case TokenType::GREATER:
-                    TYPE_BIN_OP("int",int,>,"boolean");
+                    TYPE_BIN_OP("integer",Integer,>,"boolean");
                     TYPE_BIN_OP("decimal",double,>,"boolean");
+                    TYPE_BIN_OP("bigDecimal",BigDecimal,>,"boolean")
                     TYPE_BIN_OP("string",std::string,>,"boolean");
                     TYPE_BIN_OP("boolean",bool,>,"boolean");
                     break;
                 case TokenType::GREATER_EQUAL:
-                    TYPE_BIN_OP("int",int,>=,"boolean");
+                    TYPE_BIN_OP("integer",Integer,>=,"boolean");
                     TYPE_BIN_OP("decimal",double,>=,"boolean");
+                    TYPE_BIN_OP("bigDecimal",BigDecimal,>=,"boolean")
                     TYPE_BIN_OP("string",std::string,>=,"boolean");
                     TYPE_BIN_OP("boolean",bool,>=,"boolean");
                     break;
                 case TokenType::LESS:
-                    TYPE_BIN_OP("int",int,<,"boolean");
+                    TYPE_BIN_OP("integer",Integer,<,"boolean");
                     TYPE_BIN_OP("decimal",double,<,"boolean");
+                    TYPE_BIN_OP("bigDecimal",BigDecimal,<,"boolean")
                     TYPE_BIN_OP("string",std::string,<,"boolean");
                     TYPE_BIN_OP("boolean",bool,<,"boolean");
                     break;
                 case TokenType::LESS_EQUAL:
-                    TYPE_BIN_OP("int",int,<=,"boolean");
+                    TYPE_BIN_OP("integer",Integer,<=,"boolean");
                     TYPE_BIN_OP("decimal",double,<=,"boolean");
+                    TYPE_BIN_OP("bigDecimal",BigDecimal,<=,"boolean")
                     TYPE_BIN_OP("string",std::string,<=,"boolean");
                     TYPE_BIN_OP("boolean",bool,<=,"boolean");
                     break;
                case TokenType::BANG_EQUAL:
-                    TYPE_BIN_OP("int",int,!=,"boolean");
+                    TYPE_BIN_OP("integer",Integer,!=,"boolean");
                     TYPE_BIN_OP("decimal",double,!=,"boolean");
+                    TYPE_BIN_OP("bigDecimal",BigDecimal,!=,"boolean")
                     TYPE_BIN_OP("string",std::string,!=,"boolean");
                     TYPE_BIN_OP("boolean",bool,!=,"boolean");
                     break;
                case TokenType::EQUAL_EQUAL:
-                    TYPE_BIN_OP("int",int,==,"boolean");
+                    TYPE_BIN_OP("integer",Integer,==,"boolean");
                     TYPE_BIN_OP("decimal",double,==,"boolean");
+                    TYPE_BIN_OP("bigDecimal",BigDecimal,==,"boolean")
                     TYPE_BIN_OP("string",std::string,==,"boolean");
                     TYPE_BIN_OP("boolean",bool,==,"boolean");
                     break;
 
                case TokenType::PLUS:
-                    TYPE_BIN_OP("int",int,+,"int");
+                    TYPE_BIN_OP("integer",Integer,+,"integer");
                     TYPE_BIN_OP("decimal",double,+,"decimal");
-                    TYPE_BIN_OP("boolean",bool,+,"int");
+                    TYPE_BIN_OP("bigDecimal",BigDecimal,+,"bigDecimal")
+                    TYPE_BIN_OP("boolean",bool,+,"integer");
                     TYPE_BIN_OP("string",std::string,+,"string");
                     break;
                case TokenType::MINUS:
-                    TYPE_BIN_OP("int",int,-,"int");
+                    TYPE_BIN_OP("integer",Integer,-,"integer");
                     TYPE_BIN_OP("decimal",double,-,"decimal");
-                    TYPE_BIN_OP("boolean",bool,-,"int");
+                    TYPE_BIN_OP("bigDecimal",BigDecimal,-,"bigDecimal")
+                    TYPE_BIN_OP("boolean",bool,-,"integer");
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
                case TokenType::STAR:
-                    TYPE_BIN_OP("int",int,*,"int");
+                    TYPE_BIN_OP("integer",Integer,*,"integer");
                     TYPE_BIN_OP("decimal",double,*,"decimal");
-                    TYPE_BIN_OP("boolean",bool,*,"int");
+                    TYPE_BIN_OP("bigDecimal",BigDecimal,*,"bigDecimal")
+                    TYPE_BIN_OP("boolean",bool,*,"integer");
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
                case TokenType::SLASH:
-                    if(targetType == "int"){
-                        if(std::any_cast<int>(rightval) != 0) BIN_OP(int,/,"int");
+                    if(targetType == "integer"){
+                        if(std::any_cast<Integer>(rightval) != 0) BIN_OP(Integer,/,"integer");
                         throw RuntimeError(expr.Operator,"Divide by zero error");
                     }
                     if(targetType == "decimal"){
                         if(std::any_cast<double>(rightval) != 0.0) BIN_OP(double,/,"decimal");
                         throw RuntimeError(expr.Operator,"Divide by zero error");
                     }
+                    if(targetType == "BigDecimal"){
+                        if(std::any_cast<BigDecimal>(rightval) != 0) BIN_OP(BigDecimal,/,"bigDecimal");
+                        throw RuntimeError(expr.Operator,"Divide by zero error");
+                    }
                     if(targetType == "boolean"){
-                        if(std::any_cast<bool>(rightval) != false) BIN_OP(bool,/,"int");
+                        if(std::any_cast<bool>(rightval) != false) BIN_OP(bool,/,"integer");
                         throw RuntimeError(expr.Operator,"Divide by zero error ('false' evaluates to '0')");
                     }
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
                case TokenType::PERCENT:
-                    if(targetType == "int"){
-                        if(std::any_cast<int>(rightval) != 0) BIN_OP(int,%,"int");
+                    if(targetType == "integer"){
+                        if(std::any_cast<Integer>(rightval) != 0) BIN_OP(Integer,%,"integer");
                         throw RuntimeError(expr.Operator,"Modulo by zero error");
                     }
                     if(targetType == "decimal"){
@@ -276,8 +304,12 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                             return {fmod(std::any_cast<double>(leftval),std::any_cast<double>(rightval)),"decimal"};
                         throw RuntimeError(expr.Operator,"Modulo by zero error");
                     }
+                    if(targetType == "BigDecimal"){
+                        if(std::any_cast<BigDecimal>(rightval) != 0) BIN_OP(BigDecimal,%,"bigDecimal");
+                        throw RuntimeError(expr.Operator,"Modulo by zero error");
+                    }
                     if(targetType == "boolean"){
-                        if(std::any_cast<bool>(rightval) != false) BIN_OP(bool,%,"int");
+                        if(std::any_cast<bool>(rightval) != false) BIN_OP(bool,%,"integer");
                         throw RuntimeError(expr.Operator,"Modulo by zero error ('false' evaluates to '0')");
                     }
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");

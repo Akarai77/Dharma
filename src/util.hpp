@@ -1,9 +1,10 @@
 #pragma once
 
-#include<optional>
-#include<variant>
-#include<string>
-#include<any>
+#include "types/conversions.hpp"
+#include <optional>
+#include <variant>
+#include <string>
+#include <any>
 
 using LiteralType = std::optional<std::variant<int, double, std::string, bool>>;
 using LiteralValue = std::pair<std::any,std::string>;
@@ -15,12 +16,14 @@ LiteralValue getLiteralData(const LiteralType& expr) {
         using T = std::decay_t<decltype(val)>;
         result.first = val;
 
-        if constexpr (std::is_same_v<T, int>) {
-            result.second = "int";
+        if constexpr (std::is_same_v<T, Integer>) {
+            result.second = "integer";
         } else if constexpr (std::is_same_v<T, double>) {
             result.second = "decimal";
         } else if constexpr (std::is_same_v<T, std::string>) {
             result.second = "string";
+        } else if constexpr (std::is_same_v<T, BigDecimal>) {
+            result.second = "bigDecimal";
         } else if constexpr (std::is_same_v<T, bool>) {
             result.second = "boolean";
         } else {
@@ -29,8 +32,4 @@ LiteralValue getLiteralData(const LiteralType& expr) {
     }, expr.value());
 
     return result;
-}
-
-LiteralValue promoteInt(){
-    
 }

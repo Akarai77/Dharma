@@ -45,12 +45,12 @@ class ASTPrinter : public ExprVisitor {
         LiteralValue visitLiteralExpr(LiteralExpr& expr) override {
             if(expr.literal.second == "string")
                 return expr.literal;
-            if(expr.literal.second == "int")
-                return {std::to_string(std::any_cast<int>(expr.literal.first)), "string"};
-            if(expr.literal.second == "float")
-                return {std::to_string(std::any_cast<float>(expr.literal.first)), "string"};
-            if(expr.literal.second == "double")
+            if(expr.literal.second == "integer")
+                return {std::any_cast<Integer>(expr.literal.first).toString(), "string"};
+            if(expr.literal.second == "decimal")
                 return {std::to_string(std::any_cast<double>(expr.literal.first)), "string"};
+            if(expr.literal.second == "bigDecimal")
+                return {std::any_cast<BigDecimal>(expr.literal.first).toString(), "string"};
             if(expr.literal.second == "boolean")
                 return {std::any_cast<bool>(expr.literal.first) ? "true" : "false", "string"};
 

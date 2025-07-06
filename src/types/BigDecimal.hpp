@@ -12,8 +12,8 @@
 #include <vector>
 #include "BigInt.hpp"
 
+class Integer;
 BigDecimal intToDecimal(BigInt,size_t);
-std::pair<BigDecimal,BigDecimal> makeDivisionCompatible(const BigDecimal&,const BigDecimal&);
 
 class BigDecimal {
     private:
@@ -46,6 +46,7 @@ class BigDecimal {
             oss << std::fixed << std::setprecision(20) << num;
             parseFromString(oss.str());
         }
+        BigDecimal(Integer num);
 
         void removeTrailingZeros() {
             while (!fractionalPart.empty() && fractionalPart.back() == 0) {
@@ -434,35 +435,20 @@ class BigDecimal {
             return x.truncate(precision);
         }
 
-};
-    
-BigDecimal BigInt::sqrt(size_t precision) const {
-    if (isNegative)
-        throw std::invalid_argument("Cannot compute square root of negative BigInt");
+        double toDecimal() const {
+            double result = integer.toDecimal();
 
-    BigDecimal dec(*this);
-    return dec.sqrt(precision);
-}
+            double fractional = 0.0;
+            double divisor = 10.0;
 
-BigInt BigInt::operator=(const BigDecimal& rhs) {
-    *this = rhs.truncate();
-    return *this;
-}
+            for (uint8_t digit : fractionalPart) {
+                fractional += digit / divisor;
+                divisor *= 10.0;
+            }
 
-BigDecimal intToDecimal(BigInt integer, size_t decimalPointPos) {
-    std::string num = integer.toString();
-    bool isNeg = !integer.isPositive();
-    if (isNeg) num = num.substr(1);
+            result += fractional;
 
-    if (decimalPointPos >= num.length()) {
-        num.insert(0, std::string(decimalPointPos - num.length() + 1, '0'));
-    }
+            return integer.isPositive() ? result : -result;
+        }
 
-    num.insert(num.length() - decimalPointPos, ".");
-
-    if (isNeg)
-        num.insert(0, "-");
-
-    return BigDecimal(num);
-}
-
+};  
