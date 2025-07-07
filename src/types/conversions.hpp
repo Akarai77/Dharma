@@ -1,6 +1,7 @@
 #include "BigInt.hpp"
 #include "BigDecimal.hpp"
 #include "Integer.hpp"
+#include "Nil.hpp"
 
 BigDecimal BigInt::sqrt(size_t precision) const {
     if (isNegative)

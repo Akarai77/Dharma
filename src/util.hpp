@@ -6,8 +6,9 @@
 #include <string>
 #include <any>
 
-using LiteralType = std::optional<std::variant<int, double, std::string, bool>>;
-using LiteralValue = std::pair<std::any,std::string>;
+using LiteralCore = std::variant<Integer,double,BigDecimal,std::string,bool>;
+using LiteralType = std::optional<LiteralCore>;
+using LiteralValue = std::pair<LiteralCore,std::string>;
 
 LiteralValue getLiteralData(const LiteralType& expr) {
     LiteralValue result;

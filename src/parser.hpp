@@ -127,17 +127,17 @@ class Parser{
             return false;
         }
 
-        std::any performConversion(std::any value, const std::string& from, const std::string& to) {
-            if(from == "decimal" && to == "integer") return Integer(std::any_cast<double>(value));
-            if(from == "decimal" && to == "bigDecimal") return BigDecimal(std::any_cast<double>(value));
-            if(from == "bigDecimal" && to == "integer") return Integer(std::any_cast<BigDecimal>(value));
-            if(from == "bigDecimal" && to == "decimal") return (std::any_cast<BigDecimal>(value)).toDecimal();
-            if(from == "integer" && to == "decimal") return (std::any_cast<Integer>(value)).toDecimal();
-            if(from == "integer" && to == "bigDecimal") return BigDecimal(std::any_cast<Integer>(value));
-            if(from == "integer" && to == "boolean") return (std::any_cast<Integer>(value)).toBool();
-            if(from == "boolean" && to == "integer") return Integer(std::any_cast<bool>(value));
+        LiteralCore performConversion(LiteralCore value, const std::string& from, const std::string& to) {
+            if(from == "decimal" && to == "integer") return Integer(std::get<double>(value));
+            if(from == "decimal" && to == "bigDecimal") return BigDecimal(std::get<double>(value));
+            if(from == "bigDecimal" && to == "integer") return Integer(std::get<BigDecimal>(value));
+            if(from == "bigDecimal" && to == "decimal") return (std::get<BigDecimal>(value)).toDecimal();
+            if(from == "integer" && to == "decimal") return (std::get<Integer>(value)).toDecimal();
+            if(from == "integer" && to == "bigDecimal") return BigDecimal(std::get<Integer>(value));
+            if(from == "integer" && to == "boolean") return (std::get<Integer>(value)).toBool();
+            if(from == "boolean" && to == "integer") return Integer(std::get<bool>(value));
             if(from == "nil"){
-                if(to == "integer" || to == "decimal" || to == "bigDecimal") return 0;
+                if(to == "integer" || to == "decimal" || to == "bigDecimal") return Integer(0);
                 if(to == "boolean") return false;
             }
             throw std::runtime_error("Unsupported implicit conversion.");
@@ -186,7 +186,7 @@ class Parser{
                             throw error(previous(), "Type mismatch: cannot convert 'boolean' to '" + expected + "'");
                         }
 
-                        std::any convertedValue = performConversion(true, actualType, expected);
+                        LiteralCore convertedValue = performConversion(true, actualType, expected);
                         return makeExpr<LiteralExpr>(LiteralValue{convertedValue, expected});
                     }
                 }
@@ -205,7 +205,7 @@ class Parser{
                             throw error(previous(), "Type mismatch: cannot convert 'boolean' to '" + expected + "'");
                         }
 
-                        std::any convertedValue = performConversion(false, actualType, expected);
+                        LiteralCore convertedValue = performConversion(false, actualType, expected);
                         return makeExpr<LiteralExpr>(LiteralValue{convertedValue, expected});
                     }
                 }
@@ -224,12 +224,12 @@ class Parser{
                             throw error(previous(), "Type mismatch: cannot convert 'nil' to '" + expected + "'");
                         }
 
-                        std::any convertedValue = performConversion("nil", actualType, expected);
+                        LiteralCore convertedValue = performConversion(std::string("nil"), actualType, expected);
                         return makeExpr<LiteralExpr>(LiteralValue{convertedValue, expected});
                     }
                 }
 
-                return makeExpr<LiteralExpr>(LiteralValue{"nil", actualType});
+                return makeExpr<LiteralExpr>(LiteralValue{std::string("nil"), actualType});
             }
 
             if(match({TokenType::VARIABLE})) {
@@ -249,7 +249,7 @@ class Parser{
                             throw error(previous(), "Type mismatch: cannot convert '" + actual + "' to '" + expected + "'");
                         }
 
-                        std::any convertedValue = performConversion(lit.first, actual, expected);
+                        LiteralCore convertedValue = performConversion(lit.first, actual, expected);
                         return makeExpr<LiteralExpr>(LiteralValue{convertedValue, expected});
                     }
                 }
