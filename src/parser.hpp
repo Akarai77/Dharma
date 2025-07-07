@@ -95,7 +95,7 @@ class Parser{
                 return advance();
             }
 
-            throw error(peek(),message);
+            throw ParseError(peek(),message);
         }
 
         Token mapCompoundToBinary(Token Operator) {
@@ -105,18 +105,18 @@ class Parser{
                 case TokenType::STAR_EQUAL: return Token(TokenType::STAR, "*", std::nullopt, Operator.line);
                 case TokenType::SLASH_EQUAL: return Token(TokenType::SLASH, "/", std::nullopt, Operator.line);
                 case TokenType::PERCENT_EQUAL: return Token(TokenType::PERCENT, "%",std::nullopt,Operator.line);
-                default: throw std::runtime_error("Unknown compound operator");
+                default: throw ParseError(Operator,"Unknown Compound operator : '"+Operator.lexeme+"'.");
             }
         }
 
 
         bool isConvertible(std::string from, std::string to) {
             static std::unordered_map<std::string, std::vector<std::string>> conversionTable = {
-                {"decimal", {"integer","bigDecimal"}},
-                {"bigDecimal", {"integer","decimal"}},
-                {"integer", {"decimal","bigDecimal,boolean"}},
+                {"decimal", {"integer","BigDecimal"}},
+                {"BigDecimal", {"integer","decimal"}},
+                {"integer", {"decimal","BigDecimal","boolean"}},
                 {"boolean", {"integer"}},
-                {"nil",{"integer","decimal","boolean","bigDecimal"}}
+                {"nil",{"integer","decimal","boolean","BigDecimal"}}
             };
 
             auto it = conversionTable.find(from);
@@ -129,24 +129,20 @@ class Parser{
 
         LiteralCore performConversion(LiteralCore value, const std::string& from, const std::string& to) {
             if(from == "decimal" && to == "integer") return Integer(std::get<double>(value));
-            if(from == "decimal" && to == "bigDecimal") return BigDecimal(std::get<double>(value));
-            if(from == "bigDecimal" && to == "integer") return Integer(std::get<BigDecimal>(value));
-            if(from == "bigDecimal" && to == "decimal") return (std::get<BigDecimal>(value)).toDecimal();
+            if(from == "decimal" && to == "BigDecimal") return BigDecimal(std::get<double>(value));
+            if(from == "BigDecimal" && to == "integer") return Integer(std::get<BigDecimal>(value));
+            if(from == "BigDecimal" && to == "decimal") return (std::get<BigDecimal>(value)).toDecimal();
             if(from == "integer" && to == "decimal") return (std::get<Integer>(value)).toDecimal();
-            if(from == "integer" && to == "bigDecimal") return BigDecimal(std::get<Integer>(value));
+            if(from == "integer" && to == "BigDecimal") return BigDecimal(std::get<Integer>(value));
             if(from == "integer" && to == "boolean") return (std::get<Integer>(value)).toBool();
             if(from == "boolean" && to == "integer") return Integer(std::get<bool>(value));
             if(from == "nil"){
-                if(to == "integer" || to == "decimal" || to == "bigDecimal") return Integer(0);
+                if(to == "integer") return Integer(0);
+                if(to == "decimal") return static_cast<double>(0);
+                if(to == "BigDecimal") return BigDecimal(0);
                 if(to == "boolean") return false;
             }
-            throw std::runtime_error("Unsupported implicit conversion.");
-        }
-
-        ParseError error(Token token,std::string message){
-            Adharma::error(token,message);
-            ParseError parseError;
-            return parseError;
+            return Nil();
         }
 
         void synchronize(){
@@ -183,7 +179,7 @@ class Parser{
 
                     if (actualType != expected) {
                         if (!isConvertible(actualType, expected)) {
-                            throw error(previous(), "Type mismatch: cannot convert 'boolean' to '" + expected + "'");
+                            throw ParseError(previous(), "Type mismatch: cannot convert 'boolean' to '" + expected + "'");
                         }
 
                         LiteralCore convertedValue = performConversion(true, actualType, expected);
@@ -202,7 +198,7 @@ class Parser{
 
                     if (actualType != expected) {
                         if (!isConvertible(actualType, expected)) {
-                            throw error(previous(), "Type mismatch: cannot convert 'boolean' to '" + expected + "'");
+                            throw ParseError(previous(), "Type mismatch: cannot convert 'boolean' to '" + expected + "'");
                         }
 
                         LiteralCore convertedValue = performConversion(false, actualType, expected);
@@ -221,15 +217,15 @@ class Parser{
 
                     if (actualType != expected) {
                         if (!isConvertible(actualType, expected)) {
-                            throw error(previous(), "Type mismatch: cannot convert 'nil' to '" + expected + "'");
+                            throw ParseError(previous(), "Type mismatch: cannot convert 'nil' to '" + expected + "'");
                         }
 
-                        LiteralCore convertedValue = performConversion(std::string("nil"), actualType, expected);
+                        LiteralCore convertedValue = performConversion(Nil(), actualType, expected);
                         return makeExpr<LiteralExpr>(LiteralValue{convertedValue, expected});
                     }
                 }
 
-                return makeExpr<LiteralExpr>(LiteralValue{std::string("nil"), actualType});
+                return makeExpr<LiteralExpr>(LiteralValue{Nil(), actualType});
             }
 
             if(match({TokenType::VARIABLE})) {
@@ -237,8 +233,8 @@ class Parser{
 
                 if (expectedType.has_value() && expectedType.value().lexeme != "var") {
                     if(expectedType.value().lexeme == "integer") previous().type = TokenType::INTEGER;
-                    if(expectedType.value().lexeme == "decimal") previous().type = TokenType::DECIMAL;
-                    if(expectedType.value().lexeme == "bigDecimal") previous().type = TokenType::BIGDECIMAL;
+                    if(expectedType.value().lexeme == "decimal")  previous().type = TokenType::DECIMAL;
+                    if(expectedType.value().lexeme == "BigDecimal") previous().type = TokenType::BIGDECIMAL;
                     if(expectedType.value().lexeme == "string") previous().type = TokenType::STRING;
                     if(expectedType.value().lexeme == "boolean") previous().type = TokenType::BOOLEAN;
                     std::string expected = expectedType->lexeme;
@@ -246,7 +242,7 @@ class Parser{
 
                     if (actual != expected) {
                         if (!isConvertible(actual, expected)) {
-                            throw error(previous(), "Type mismatch: cannot convert '" + actual + "' to '" + expected + "'");
+                            throw ParseError(previous(), "Type mismatch: cannot convert '" + actual + "' to '" + expected + "'");
                         }
 
                         LiteralCore convertedValue = performConversion(lit.first, actual, expected);
@@ -267,7 +263,7 @@ class Parser{
                 return makeExpr<GroupingExpr>(std::move(expr));
             }
 
-            throw error(peek(),"Expect Expression");
+            throw ParseError(peek(),"Expect Expression");
         }
 
         Expression getUnary(std::optional<Token> type = std::nullopt){
@@ -380,7 +376,7 @@ class Parser{
                     return makeExpr<AssignExpr>(name,Operator,std::move(value));
                 }
 
-                Adharma::error(Operator, "Invaid Assignment Target");
+                throw ParseError(Operator, "Assignment Target cant be a '"+getTypeOfExpression(std::move(expr))+"'.");
             }
 
             return expr;
@@ -396,12 +392,12 @@ class Parser{
             if(match({TokenType::COLON})){
                 Token annotatedType = consume(TokenType::TYPE,"Expected Type after ':'");
                 if(annotatedType.lexeme == "var")
-                    throw error(previous(),"Invalid type annotation: 'var' cannot be used as a type annotation.");
+                    throw ParseError(previous(),"Invalid type annotation: 'var' cannot be used as a type annotation.");
                 if(type.lexeme != "var"){
                     if(type.lexeme == annotatedType.lexeme)
-                        throw error(previous(),"Redundant type annotation: variable '"+name.lexeme+"' already declared as '"+type.lexeme+"'.");
+                        throw ParseError(previous(),"Redundant type annotation: variable '"+name.lexeme+"' already declared as '"+type.lexeme+"'.");
                     else
-                        throw error(previous(),"Conflicting type annotations for '"+name.lexeme+"' : declared as '"+type.lexeme+"' but annotated as '"+annotatedType.lexeme+"'.");
+                        throw ParseError(previous(),"Conflicting type annotations for '"+name.lexeme+"' : declared as '"+type.lexeme+"' but annotated as '"+annotatedType.lexeme+"'.");
                 }
                 type = annotatedType;
             }
@@ -516,6 +512,7 @@ class Parser{
                 if(match({TokenType::TYPE})) return getVarDeclaration(previous());
                 return getStatement();
             } catch(ParseError& error){
+                std::cerr<<error.message()<<std::endl;
                 synchronize();
                 return nullptr;
             }

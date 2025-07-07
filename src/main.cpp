@@ -14,15 +14,12 @@
 #include "interpreter.hpp"
 
 void run(const std::string& script){
-    Tokenizer tokenizer(script);
-    std::vector<Token> tokens = tokenizer.tokenize();
-    Parser parser(tokens);
-    std::vector<Statement> statements = parser.parse();
-    Interpreter interpreter;
-
-    if(errorFlag) return;
-    if(runtimeErrorFlag) return;
-    interpreter.interpret(statements);
+        Tokenizer tokenizer(script);
+        std::vector<Token> tokens = tokenizer.tokenize();
+        Parser parser(tokens);
+        std::vector<Statement> statements = parser.parse();
+        Interpreter interpreter;
+        interpreter.interpret(statements);
 }
 
 void runFile(const std::string& path){
@@ -31,8 +28,11 @@ void runFile(const std::string& path){
     std::stringstream scriptStream;
     scriptStream << input.rdbuf();
     const std::string script = scriptStream.str();
-    run(script);
-    if(errorFlag == true) exit(EXIT_FAILURE);
+    try {
+        run(script);
+    } catch(const Adharma& err) {
+        std::cerr<<err.message()<<std::endl;
+    }
 }
 
 void runPrompt(){
@@ -41,9 +41,11 @@ void runPrompt(){
         std::cout<<"> ";
         std::getline(std::cin, input);
         if(input == "") break;
-        run(input);
-        errorFlag = false;
-        runtimeErrorFlag = false;
+        try {
+            run(input);
+        } catch (const Adharma& err) {
+            std::cerr<<err.message()<<std::endl;
+        }
         std::cout<<std::endl;
     }
     std::cout<<"Thank You! May Your soul find the right path!";

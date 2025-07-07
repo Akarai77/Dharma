@@ -4,9 +4,8 @@
 #include <optional>
 #include <variant>
 #include <string>
-#include <any>
 
-using LiteralCore = std::variant<Integer,double,BigDecimal,std::string,bool>;
+using LiteralCore = std::variant<Integer,double,BigDecimal,std::string,bool,Nil>;
 using LiteralType = std::optional<LiteralCore>;
 using LiteralValue = std::pair<LiteralCore,std::string>;
 
@@ -24,7 +23,7 @@ LiteralValue getLiteralData(const LiteralType& expr) {
         } else if constexpr (std::is_same_v<T, std::string>) {
             result.second = "string";
         } else if constexpr (std::is_same_v<T, BigDecimal>) {
-            result.second = "bigDecimal";
+            result.second = "BigDecimal";
         } else if constexpr (std::is_same_v<T, bool>) {
             result.second = "boolean";
         } else {
@@ -34,3 +33,19 @@ LiteralValue getLiteralData(const LiteralType& expr) {
 
     return result;
 }
+
+bool isNil(const LiteralCore& val) {
+    return std::holds_alternative<Nil>(val);
+}
+
+std::string cleanDouble(double val, int precision = 12) {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(precision) << val;
+
+    std::string str = oss.str();
+    str.erase(str.find_last_not_of('0') + 1);
+    if (str.back() == '.') str.pop_back();
+
+    return str;
+}
+

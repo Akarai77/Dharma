@@ -1,5 +1,4 @@
 #pragma once
-#include "ASTPrinter.hpp"
 #include"Token.hpp"
 #include"error.hpp"
 #include <cctype>
@@ -98,7 +97,7 @@ class Tokenizer{
             }
 
             if(isAtEnd()){
-                Adharma::error(peek(), "Unterminated String");
+                LexicalError(line,"Unterminated String! String should be terminated before EOL/EOF.");
                 return;
             }
 
@@ -115,11 +114,11 @@ class Tokenizer{
             if(peek() == '.' && std::isdigit(peek(1))){
                 advance();
                 while(std::isdigit(peek())) advance();
-                addToken(TokenType::VARIABLE,std::stod(source.substr(start,current-start)));
+                addToken(TokenType::VARIABLE,BigDecimal(source.substr(start,current-start)));
                 return;
             }
 
-           addToken(TokenType::VARIABLE,std::stoi(source.substr(start,current-start)));           
+           addToken(TokenType::VARIABLE,Integer(source.substr(start,current-start)));           
         }
 
         bool isAlpha(char ch){
@@ -206,7 +205,8 @@ class Tokenizer{
                          } else if(isAlpha(c)) {
                              getIdentifier();
                          } else {
-                             Adharma::error(line, "Unexpected Character");
+                             std::string str(1,c);
+                             LexicalError(line,"Unexpected Character : '"+str+"'.");
                          }
                          break;
 

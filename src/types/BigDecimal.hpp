@@ -344,7 +344,6 @@ class BigDecimal {
             b = rhs;
             a.abs();
             b.abs();
-            std::cout<<a/b<<std::endl;
 
             BigDecimal truncatedQuotient = BigDecimal((a / b).integer);
             result = a - b * truncatedQuotient;

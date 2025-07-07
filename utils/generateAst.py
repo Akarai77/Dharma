@@ -69,6 +69,18 @@ def getSubClasses():
         subClasses += f"\t\treturn visitor.visit{className}(*this);\n\t}}\n}};\n"
     return subClasses
 
+def getFunctions():
+    functions = f"\nstd::string getTypeOfExpression({baseClassPointer} {baseClassName.lower()}) {{\n"
+    for i in range(len(subClassNames)):
+        if i == 0:
+            functions += "\tif "
+        else: 
+            functions += "\t} else if "
+        functions += f"(auto {subClassNames[i].lower()} = dynamic_cast<{subClassNames[i]}*>({baseClassName.lower()}.get())) {{\n"
+        functions += f"\t\treturn \"{subClassNames[i].strip("Expr")} Expression\";\n"
+    functions += "\t}\n\treturn \"Unknown Expression\";\n}"
+    return functions
+
 def generateAst(outputDir):
     if not os.path.exists(outputDir):
         os.makedirs(outputDir)
@@ -79,6 +91,7 @@ def generateAst(outputDir):
         f.write(getVisitorInterface())
         f.write(getBaseClass())
         f.write(getSubClasses())
+        f.write(getFunctions())
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

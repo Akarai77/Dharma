@@ -14,5 +14,9 @@ class Nil{
         bool operator!=(const Nil& rhs) const {
             return false;
         }
-
+            
+        friend std::ostream& operator<<(std::ostream& out,const Nil& val) {
+            out << "nil";
+            return out;
+        }
 };

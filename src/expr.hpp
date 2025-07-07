@@ -113,3 +113,22 @@ public:
 		return visitor.visitVariableExpr(*this);
 	}
 };
+
+std::string getTypeOfExpression(Expression expr) {
+	if (auto assignexpr = dynamic_cast<AssignExpr*>(expr.get())) {
+		return "Assign Expression";
+	} else if (auto binaryexpr = dynamic_cast<BinaryExpr*>(expr.get())) {
+		return "Binary Expression";
+	} else if (auto unaryexpr = dynamic_cast<UnaryExpr*>(expr.get())) {
+		return "Unary Expression";
+	} else if (auto groupingexpr = dynamic_cast<GroupingExpr*>(expr.get())) {
+		return "Grouping Expression";
+	} else if (auto literalexpr = dynamic_cast<LiteralExpr*>(expr.get())) {
+		return "Literal Expression";
+	} else if (auto logicalexpr = dynamic_cast<LogicalExpr*>(expr.get())) {
+		return "Logical Expression";
+	} else if (auto variableexpr = dynamic_cast<VariableExpr*>(expr.get())) {
+		return "Variable Expression";
+	}
+	return "Unknown Expression";
+}

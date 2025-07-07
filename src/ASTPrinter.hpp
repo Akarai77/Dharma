@@ -2,7 +2,6 @@
 
 #include "expr.hpp"
 #include <string>
-#include <any>
 #include <sstream>
 
 class ASTPrinter : public ExprVisitor {
@@ -16,7 +15,7 @@ class ASTPrinter : public ExprVisitor {
             LiteralValue format(const std::string& name,Exprs&... exprs) {
                 std::ostringstream out;
                 out << "(" << name;
-                ((out << " " << std::any_cast<std::string>(print(exprs).first)), ...);
+                ((out << " " << std::get<std::string>(print(exprs).first)), ...);
                 out << ")";
                 LiteralValue value;
                 return {out.str(),"string"};
@@ -46,15 +45,15 @@ class ASTPrinter : public ExprVisitor {
             if(expr.literal.second == "string")
                 return expr.literal;
             if(expr.literal.second == "integer")
-                return {std::any_cast<Integer>(expr.literal.first).toString(), "string"};
+                return {std::get<Integer>(expr.literal.first).toString(), "string"};
             if(expr.literal.second == "decimal")
-                return {std::to_string(std::any_cast<double>(expr.literal.first)), "string"};
-            if(expr.literal.second == "bigDecimal")
-                return {std::any_cast<BigDecimal>(expr.literal.first).toString(), "string"};
+                return {std::to_string(std::get<double>(expr.literal.first)), "string"};
+            if(expr.literal.second == "BigDecimal")
+                return {std::get<BigDecimal>(expr.literal.first).toString(), "string"};
             if(expr.literal.second == "boolean")
-                return {std::any_cast<bool>(expr.literal.first) ? "true" : "false", "string"};
+                return {std::get<bool>(expr.literal.first) ? std::string("true") : std::string("false"), "string"};
 
-            return {"nil", "string"};
+            return {Nil(), "string"};
         }
 
 };

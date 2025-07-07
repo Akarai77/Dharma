@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include "error.hpp"
+#include "util.hpp"
 
 #define BIN_OP(actualType, op, retType) \
     return {std::get<actualType>(leftval) op std::get<actualType>(rightval), retType};
@@ -43,8 +44,8 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         }
 
         LiteralValue isEqual(const LiteralCore& l,const LiteralCore& r) const {
-            if(l && r) return {true,"bool"};
-            if(l) return {false,"bool"};
+            if(isNil(l) && isNil(r)) return {true,"bool"};
+            if(isNil(l)) return {false,"bool"};
 
             return {true,"boolean"};
         }
@@ -57,7 +58,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             if(type == "boolean") return 0;
             if(type == "integer") return 1;
             if(type == "decimal") return 2;
-            if(type == "bigDecimal") return 3;
+            if(type == "BigDecimal") return 3;
             if(type == "string") return 4;
             return -1;
         }
@@ -68,31 +69,31 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             if(currentType == targetType) return operand;
             //warn nil->othertype
             if(currentType == "nil"){
-                if(targetType == "integer" || targetType == "decimal" || targetType == "bigDecimal") return {0,targetType};
+                if(targetType == "integer") return {Integer(0),targetType};
+                if(targetType == "decimal") return {static_cast<double>(0),targetType};
+                if(targetType == "BigDecimal") return {BigDecimal(0),targetType};
                 if(targetType == "boolean") return {false,"boolean"};
             }
             if(currentType == "boolean"){
                 bool val = std::get<bool>(value);
                 if(targetType == "integer") return {Integer(val),"integer"};
                 if(targetType == "decimal") return {static_cast<double>(val),"decimal"};
-                if(targetType == "bigDecimal") return {BigDecimal(val),"bigDecimal"};
+                if(targetType == "BigDecimal") return {BigDecimal(val),"BigDecimal"};
             }
             if(currentType == "integer"){
                 Integer val = std::get<Integer>(value);
                 if(targetType == "decimal") return {val.toDecimal(),"decimal"};
-                if(targetType == "bigDecimal") return {val.toBigDecimal(),"bigDecimal"};
+                if(targetType == "BigDecimal") return {val.toBigDecimal(),"BigDecimal"};
             }
             if(currentType == "decimal"){
                 double val = std::get<double>(value);
-                if(targetType == "BigDecimal") return {BigDecimal(val),"bigDecimal"};
+                if(targetType == "BigDecimal") return {BigDecimal(val),"BigDecimal"};
             }
             
             throw err;
         }
 
         std::string stringify(LiteralValue result) const {
-            if (result.second == "nil") return "nil";
-
             std::string text;
 
             if (result.second == "boolean") {
@@ -100,8 +101,8 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             } else if (result.second == "integer") {
                 text = (std::get<Integer>(result.first)).toString();
             } else if (result.second == "decimal") {
-                text = std::to_string(std::get<double>(result.first));
-            } else if(result.second == "bigDecimal") {
+                text = cleanDouble(std::get<double>(result.first));
+            } else if(result.second == "BigDecimal") {
                 text = (std::get<BigDecimal>(result.first)).toString();
             } else if (result.second == "string") {
                 text = "'"+std::get<std::string>(result.first)+"'";
@@ -129,8 +130,8 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                         return  {- std::get<Integer>(value.first),"integer"};
                     if(value.second == "decimal")
                         return {- std::get<double>(value.first),"decimal"};
-                    if(value.second == "bigDecimal")
-                        return {- std::get<BigDecimal>(value.first),"bigDecimal"};
+                    if(value.second == "BigDecimal")
+                        return {- std::get<BigDecimal>(value.first),"BigDecimal"};
                     throw RuntimeError(expr.Operator,"Unsupported operand");
 
                 case TokenType::BANG :
@@ -146,7 +147,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                             incrementedValue = {++std::get<Integer>(value.first),"integer"};
                         else if(value.second == "decimal")
                             incrementedValue = {std::get<double>(value.first)+1,"decimal"};
-                        else if(value.second == "bigDecimal")
+                        else if(value.second == "BigDecimal")
                             incrementedValue = {++std::get<BigDecimal>(value.first),"decimal"};
                         else
                             throw RuntimeError(expr.Operator, "Invalid operand type for '++'");
@@ -174,8 +175,8 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                             decrementedValue = {--std::get<Integer>(value.first),"integer"};
                         else if(value.second == "decimal")
                             decrementedValue = {std::get<double>(value.first)-1,"decimal"};
-                        else if(value.second == "bigDecimal")
-                            decrementedValue = {--std::get<BigDecimal>(value.first),"bigDecimal"};
+                        else if(value.second == "BigDecimal")
+                            decrementedValue = {--std::get<BigDecimal>(value.first),"BigDecimal"};
                         else
                             throw RuntimeError(expr.Operator, "Invalid operand type for '--'");
 
@@ -194,7 +195,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
             }
 
-            return {std::string("nil"),"nil"};
+            return {Nil(),"nil"};
         }
 
         LiteralValue visitVariableExpr(VariableExpr& expr) override {
@@ -213,42 +214,42 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                case TokenType::GREATER:
                     TYPE_BIN_OP("integer",Integer,>,"boolean");
                     TYPE_BIN_OP("decimal",double,>,"boolean");
-                    TYPE_BIN_OP("bigDecimal",BigDecimal,>,"boolean")
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,>,"boolean")
                     TYPE_BIN_OP("string",std::string,>,"boolean");
                     TYPE_BIN_OP("boolean",bool,>,"boolean");
                     break;
                 case TokenType::GREATER_EQUAL:
                     TYPE_BIN_OP("integer",Integer,>=,"boolean");
                     TYPE_BIN_OP("decimal",double,>=,"boolean");
-                    TYPE_BIN_OP("bigDecimal",BigDecimal,>=,"boolean")
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,>=,"boolean")
                     TYPE_BIN_OP("string",std::string,>=,"boolean");
                     TYPE_BIN_OP("boolean",bool,>=,"boolean");
                     break;
                 case TokenType::LESS:
                     TYPE_BIN_OP("integer",Integer,<,"boolean");
                     TYPE_BIN_OP("decimal",double,<,"boolean");
-                    TYPE_BIN_OP("bigDecimal",BigDecimal,<,"boolean")
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,<,"boolean")
                     TYPE_BIN_OP("string",std::string,<,"boolean");
                     TYPE_BIN_OP("boolean",bool,<,"boolean");
                     break;
                 case TokenType::LESS_EQUAL:
                     TYPE_BIN_OP("integer",Integer,<=,"boolean");
                     TYPE_BIN_OP("decimal",double,<=,"boolean");
-                    TYPE_BIN_OP("bigDecimal",BigDecimal,<=,"boolean")
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,<=,"boolean")
                     TYPE_BIN_OP("string",std::string,<=,"boolean");
                     TYPE_BIN_OP("boolean",bool,<=,"boolean");
                     break;
                case TokenType::BANG_EQUAL:
                     TYPE_BIN_OP("integer",Integer,!=,"boolean");
                     TYPE_BIN_OP("decimal",double,!=,"boolean");
-                    TYPE_BIN_OP("bigDecimal",BigDecimal,!=,"boolean")
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,!=,"boolean")
                     TYPE_BIN_OP("string",std::string,!=,"boolean");
                     TYPE_BIN_OP("boolean",bool,!=,"boolean");
                     break;
                case TokenType::EQUAL_EQUAL:
                     TYPE_BIN_OP("integer",Integer,==,"boolean");
                     TYPE_BIN_OP("decimal",double,==,"boolean");
-                    TYPE_BIN_OP("bigDecimal",BigDecimal,==,"boolean")
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,==,"boolean")
                     TYPE_BIN_OP("string",std::string,==,"boolean");
                     TYPE_BIN_OP("boolean",bool,==,"boolean");
                     break;
@@ -256,22 +257,22 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                case TokenType::PLUS:
                     TYPE_BIN_OP("integer",Integer,+,"integer");
                     TYPE_BIN_OP("decimal",double,+,"decimal");
-                    TYPE_BIN_OP("bigDecimal",BigDecimal,+,"bigDecimal")
-                    TYPE_BIN_OP("boolean",bool,+,"integer");
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,+,"BigDecimal")
+                    TYPE_BIN_OP("boolean",Integer,+,"integer");
                     TYPE_BIN_OP("string",std::string,+,"string");
                     break;
                case TokenType::MINUS:
                     TYPE_BIN_OP("integer",Integer,-,"integer");
                     TYPE_BIN_OP("decimal",double,-,"decimal");
-                    TYPE_BIN_OP("bigDecimal",BigDecimal,-,"bigDecimal")
-                    TYPE_BIN_OP("boolean",bool,-,"integer");
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,-,"BigDecimal")
+                    TYPE_BIN_OP("boolean",Integer,-,"integer");
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
                case TokenType::STAR:
                     TYPE_BIN_OP("integer",Integer,*,"integer");
                     TYPE_BIN_OP("decimal",double,*,"decimal");
-                    TYPE_BIN_OP("bigDecimal",BigDecimal,*,"bigDecimal")
-                    TYPE_BIN_OP("boolean",bool,*,"integer");
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,*,"BigDecimal")
+                    TYPE_BIN_OP("boolean",Integer,*,"integer");
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
                case TokenType::SLASH:
@@ -284,11 +285,11 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                         throw RuntimeError(expr.Operator,"Divide by zero error");
                     }
                     if(targetType == "BigDecimal"){
-                        if(std::get<BigDecimal>(rightval) != 0) BIN_OP(BigDecimal,/,"bigDecimal");
+                        if(std::get<BigDecimal>(rightval) != 0) BIN_OP(BigDecimal,/,"BigDecimal");
                         throw RuntimeError(expr.Operator,"Divide by zero error");
                     }
                     if(targetType == "boolean"){
-                        if(std::get<bool>(rightval) != false) BIN_OP(bool,/,"integer");
+                        if(std::get<bool>(rightval) != false) BIN_OP(Integer,/,"integer");
                         throw RuntimeError(expr.Operator,"Divide by zero error ('false' evaluates to '0')");
                     }
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
@@ -304,18 +305,18 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                         throw RuntimeError(expr.Operator,"Modulo by zero error");
                     }
                     if(targetType == "BigDecimal"){
-                        if(std::get<BigDecimal>(rightval) != 0) BIN_OP(BigDecimal,%,"bigDecimal");
+                        if(std::get<BigDecimal>(rightval) != 0) BIN_OP(BigDecimal,%,"BigDecimal");
                         throw RuntimeError(expr.Operator,"Modulo by zero error");
                     }
                     if(targetType == "boolean"){
-                        if(std::get<bool>(rightval) != false) BIN_OP(bool,%,"integer");
+                        if(std::get<bool>(rightval) != false) BIN_OP(Integer,%,"integer");
                         throw RuntimeError(expr.Operator,"Modulo by zero error ('false' evaluates to '0')");
                     }
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
           }
 
-           return {std::string("nil"),"nil"};
+           return {Nil(),"nil"};
         }
 
         LiteralValue visitLogicalExpr(LogicalExpr& expr) override {
@@ -339,7 +340,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                     return { isTruthy(evaluate(expr.right)), "boolean" };
 
                 default:
-                    throw std::runtime_error("Invalid logical operator.");
+                    throw RuntimeError(expr.Operator,"Invalid logical operator.");
             }
         }
 
@@ -352,22 +353,22 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         LiteralValue visitPrintStmt(PrintStmt& statement) override {
             LiteralValue value = evaluate(statement.expression);
             std::cout<<stringify(value);
-            return {std::string("nil"),"nil"};
+            return {Nil(),"nil"};
         }
 
         LiteralValue visitExprStmt(ExprStmt& statement) override{
             evaluate(statement.expression);
-            return {std::string("nil"),"nil"};
+            return {Nil(),"nil"};
         }
 
         LiteralValue visitVarStmt(VarStmt& statement) override {
-            LiteralValue value = {std::string("nil"),"nil"};
+            LiteralValue value = {Nil(),"nil"};
             if(statement.initializer != nullptr){
                 value = evaluate(statement.initializer);
             }
 
             environment->define(statement.name.lexeme,value,statement.type.lexeme);
-            return {std::string("nil"),"nil"};
+            return {Nil(),"nil"};
         }
 
         LiteralValue visitIfStmt(IfStmt& statement) override {
@@ -378,7 +379,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             } else if(statement.elseBranch != nullptr){
                 execute(statement.elseBranch);
             }
-            return {std::string("nil"),"nil"};
+            return {Nil(),"nil"};
         }
 
         LiteralValue visitWhileStmt(WhileStmt& statement) override {
@@ -386,7 +387,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                 execute(statement.body);
             }
 
-            return {std::string("nil"),"nil"};
+            return {Nil(),"nil"};
         }
 
         LiteralValue visitForStmt(ForStmt& statement) override {
@@ -406,13 +407,13 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                 }
             }
 
-            return {std::string("nil"), "nil"};
+            return {Nil(), "nil"};
         }
 
         LiteralValue visitBlockStmt(BlockStmt& stmt) override {
             Environment* newEnvironment = new Environment(environment);
             executeBlock(stmt.statements, newEnvironment);
-            return {std::string("nil"),"nil"};
+            return {Nil(),"nil"};
         }
 
     public:
@@ -423,7 +424,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                     execute(statement);
                 }
             } catch(RuntimeError& err){
-                Adharma::runtimeError(err);
+                std::cerr<<err.message()<<std::endl;
             }
         }
 };;

@@ -1,48 +1,62 @@
 #pragma once
 #include "Token.hpp"
-#include<iostream>
+#include <exception>
 #include <string>
-bool errorFlag = false;
-bool runtimeErrorFlag = false;
 
-class ParseError : public std::exception {
+class Adharma : public std::exception {
     public:
-        const char * what() const noexcept override {
-            return "Parse Error!";
+        virtual const char* what() const noexcept override {
+            return "AdharmaError";
+        }
+
+        virtual std::string message() const = 0;
+};
+
+class LexicalError : public Adharma {
+    int line;
+    std::string msg;
+    public:
+        LexicalError(const int& line,const std::string& msg)
+            : line(line), msg(msg) {}
+
+        const char* what() const noexcept override {
+            return "LexicalError";
+        }
+
+        std::string message() const override {
+            return "[line " + std::to_string(line) + "] LexicalError : "+ msg;
         }
 };
 
-class RuntimeError : public std::exception{
+class ParseError : public Adharma {
+    Token token;
+    std::string msg;
     public:
-        std::string err;
-        Token token;
+        ParseError(const Token& token, const std::string& msg)
+            : token(token), msg(msg) {}
 
-        RuntimeError(Token token,std::string err) : token(token), err(err){}
+        const char* what() const noexcept override {
+            return "ParseError";
+        }
 
-        const char * what() const noexcept override{
-            return "Runtime Error";       
-    }
+        std::string message() const override {
+            return "[line " + std::to_string(token.line) + "] ParseError at '" + token.lexeme + "': " + msg;
+        }
 };
 
-namespace Adharma{
-    void report(int line,std::string where,std::string message){
-        std::cout<<"[Line "<<line<<"] Error"<<where<<": "<<message;
-        errorFlag = true;
-    }
+class RuntimeError : public Adharma {
+    Token token;
+    std::string msg;
+    public:
+        RuntimeError(const Token& token, const std::string& msg)
+            : token(token), msg(msg) {}
 
-    void error(int line, std::string message){
-        report(line,"",message);
-    }
+        const char* what() const noexcept override {
+            return "RuntimeError";
+        }
 
-    void error(Token token, std::string message){
-        if(token.type == TokenType::EOF_TOKEN) 
-            report(token.line," at end",message);
-        else
-            report(token.line, " at '"+token.lexeme+"'",message);
-    }
+        std::string message() const override {
+            return "[line " + std::to_string(token.line) + "] RuntimeError at '" + token.lexeme + "': " + msg;
+        }
+};
 
-    void runtimeError(RuntimeError& error){
-        std::cout<<"line["<<error.token.line<<"] Error at "<<error.token.lexeme<<" "<<error.err;
-        runtimeErrorFlag = true;
-    }
-}
