@@ -1,7 +1,7 @@
 #pragma once
 
-#include "SourceManager.hpp"
-#include "Token.hpp"
+#include "sourceManager.hpp"
+#include "token.hpp"
 #include <string>
 
 class Warning {

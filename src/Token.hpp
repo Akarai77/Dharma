@@ -14,7 +14,7 @@ class Token{
         int line;
         int column;
 
-        Token(TokenType type,std::string lexeme,LiteralType literal,int line,int column = -1) :
+        Token(TokenType type,std::string lexeme,LiteralType literal,int line,int column) :
             type(type), lexeme(lexeme), literal(literal), line(line), column(column) {}
 
         friend std::ostream& operator<<(std::ostream& out,const Token& token);
@@ -27,7 +27,7 @@ std::ostream& operator<<(std::ostream& out, const Token& token) {
             out << literal << " ";
         }, *token.literal);
     }
-    out<<"> ";
+    out<<token.line<<" "<<token.column<<"> ";
     return out;
 }
 

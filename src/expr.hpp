@@ -1,11 +1,13 @@
 #pragma once
 
-#include "Token.hpp"
+#include "token.hpp"
+#include <vector>
 #include <memory>
 
 class Expr;
 class AssignExpr;
 class BinaryExpr;
+class CallExpr;
 class UnaryExpr;
 class GroupingExpr;
 class LiteralExpr;
@@ -21,19 +23,20 @@ std::unique_ptr<T> makeExpr(Args&&... args) {
 
 class ExprVisitor {
 public:
-	virtual LiteralValue visitAssignExpr(AssignExpr& expr) = 0;
-	virtual LiteralValue visitBinaryExpr(BinaryExpr& expr) = 0;
-	virtual LiteralValue visitUnaryExpr(UnaryExpr& expr) = 0;
-	virtual LiteralValue visitGroupingExpr(GroupingExpr& expr) = 0;
-	virtual LiteralValue visitLiteralExpr(LiteralExpr& expr) = 0;
-	virtual LiteralValue visitLogicalExpr(LogicalExpr& expr) = 0;
-	virtual LiteralValue visitVariableExpr(VariableExpr& expr) = 0;
+	virtual RuntimeValue visitAssignExpr(AssignExpr& expr) = 0;
+	virtual RuntimeValue visitBinaryExpr(BinaryExpr& expr) = 0;
+	virtual RuntimeValue visitCallExpr(CallExpr& expr) = 0;
+	virtual RuntimeValue visitUnaryExpr(UnaryExpr& expr) = 0;
+	virtual RuntimeValue visitGroupingExpr(GroupingExpr& expr) = 0;
+	virtual RuntimeValue visitLiteralExpr(LiteralExpr& expr) = 0;
+	virtual RuntimeValue visitLogicalExpr(LogicalExpr& expr) = 0;
+	virtual RuntimeValue visitVariableExpr(VariableExpr& expr) = 0;
 	virtual ~ExprVisitor() = default;
 };
 
 class Expr {
 public:
-	virtual LiteralValue accept(ExprVisitor& visitor) = 0;
+	virtual RuntimeValue accept(ExprVisitor& visitor) = 0;
 	virtual ~Expr() = default;
 };
 
@@ -44,7 +47,7 @@ public:
 	Expression value;
 
 	AssignExpr(Token name, Token Operator, Expression value) : name(name), Operator(Operator), value(std::move(value)) {}
-	LiteralValue accept(ExprVisitor& visitor) override {
+	RuntimeValue accept(ExprVisitor& visitor) override {
 		return visitor.visitAssignExpr(*this);
 	}
 };
@@ -56,8 +59,20 @@ public:
 	Expression right;
 
 	BinaryExpr(Expression left, Token Operator, Expression right) : left(std::move(left)), Operator(Operator), right(std::move(right)) {}
-	LiteralValue accept(ExprVisitor& visitor) override {
+	RuntimeValue accept(ExprVisitor& visitor) override {
 		return visitor.visitBinaryExpr(*this);
+	}
+};
+
+class CallExpr : public Expr {
+public:
+	Expression callee;
+	Token paren;
+	std::vector<Expression> arguments;
+
+	CallExpr(Expression callee, Token paren, std::vector<Expression> arguments) : callee(std::move(callee)), paren(paren), arguments(std::move(arguments)) {}
+	RuntimeValue accept(ExprVisitor& visitor) override {
+		return visitor.visitCallExpr(*this);
 	}
 };
 
@@ -67,7 +82,7 @@ public:
 	Expression right;
 
 	UnaryExpr(Token Operator, Expression right) : Operator(Operator), right(std::move(right)) {}
-	LiteralValue accept(ExprVisitor& visitor) override {
+	RuntimeValue accept(ExprVisitor& visitor) override {
 		return visitor.visitUnaryExpr(*this);
 	}
 };
@@ -77,7 +92,7 @@ public:
 	Expression expression;
 
 	GroupingExpr(Expression expression) : expression(std::move(expression)) {}
-	LiteralValue accept(ExprVisitor& visitor) override {
+	RuntimeValue accept(ExprVisitor& visitor) override {
 		return visitor.visitGroupingExpr(*this);
 	}
 };
@@ -87,7 +102,7 @@ public:
 	LiteralValue literal;
 
 	LiteralExpr(LiteralValue literal) : literal(literal) {}
-	LiteralValue accept(ExprVisitor& visitor) override {
+	RuntimeValue accept(ExprVisitor& visitor) override {
 		return visitor.visitLiteralExpr(*this);
 	}
 };
@@ -99,7 +114,7 @@ public:
 	Expression right;
 
 	LogicalExpr(Expression left, Token Operator, Expression right) : left(std::move(left)), Operator(Operator), right(std::move(right)) {}
-	LiteralValue accept(ExprVisitor& visitor) override {
+	RuntimeValue accept(ExprVisitor& visitor) override {
 		return visitor.visitLogicalExpr(*this);
 	}
 };
@@ -109,7 +124,7 @@ public:
 	Token name;
 
 	VariableExpr(Token name) : name(name) {}
-	LiteralValue accept(ExprVisitor& visitor) override {
+	RuntimeValue accept(ExprVisitor& visitor) override {
 		return visitor.visitVariableExpr(*this);
 	}
 };
@@ -119,6 +134,8 @@ std::string getTypeOfExpression(Expression expr) {
 		return "Assign Expression";
 	} else if (auto binaryexpr = dynamic_cast<BinaryExpr*>(expr.get())) {
 		return "Binary Expression";
+	} else if (auto callexpr = dynamic_cast<CallExpr*>(expr.get())) {
+		return "Call Expression";
 	} else if (auto unaryexpr = dynamic_cast<UnaryExpr*>(expr.get())) {
 		return "Unary Expression";
 	} else if (auto groupingexpr = dynamic_cast<GroupingExpr*>(expr.get())) {

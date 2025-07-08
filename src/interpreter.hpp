@@ -1,41 +1,26 @@
 #pragma once
 
-#include "Token.hpp"
+#include "function.hpp"
+#include "token.hpp"
 #include "expr.hpp"
 #include "stmt.hpp"
 #include "tokenType.hpp"
 #include "environment.hpp"
 #include <cmath>
-#include <string>
-#include <vector>
+#include <memory>
 #include "error.hpp"
 #include "util.hpp"
+#include "callable.hpp"
+#include "warning.hpp"
 
 #define BIN_OP(actualType, op, retType) \
-    return {std::get<actualType>(leftval) op std::get<actualType>(rightval), retType};
+    return LiteralValue{std::get<actualType>(leftval) op std::get<actualType>(rightval), retType};
 
 #define TYPE_BIN_OP(type, actualType, op, retType) \
     if(targetType == type) BIN_OP(actualType, op, retType);
 
 class Interpreter : public ExprVisitor, public StmtVisitor{
     private:
-        Environment* environment = new Environment();
-
-        LiteralValue evaluate(Expression& expression){
-            return expression->accept(*this);
-        }
-
-        void execute(Statement& statement){
-            statement->accept(*this);
-        }
-
-        void executeBlock(std::vector<Statement>& statements,Environment* newEnvironment){
-            EnvSwitch Switch(this->environment,newEnvironment);
-
-            for(auto& statement : statements){
-                execute(statement);
-            }
-        }
 
         bool isTruthy(LiteralValue literal) const {
             if(literal.second == "nil") return false;
@@ -63,11 +48,11 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             return -1;
         }
 
-        LiteralValue promoteType(const LiteralValue& operand,std::string targetType,RuntimeError err) {
+        LiteralValue promoteType(const LiteralValue& operand,std::string targetType,const Token& token,RuntimeError err) {
             const auto& [value,currentType] = operand;
 
             if(currentType == targetType) return operand;
-            //warn nil->othertype
+            std::cout<<ImplicitConversionWarning(token,targetType,currentType).message();
             if(currentType == "nil"){
                 if(targetType == "integer") return {Integer(0),targetType};
                 if(targetType == "decimal") return {static_cast<double>(0),targetType};
@@ -113,29 +98,29 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             return text;
         }
 
-        LiteralValue visitLiteralExpr(LiteralExpr& expr) override {
+        RuntimeValue visitLiteralExpr(LiteralExpr& expr) override {
             return expr.literal;
         }
 
-        LiteralValue visitGroupingExpr(GroupingExpr& expr) override {
+        RuntimeValue visitGroupingExpr(GroupingExpr& expr) override {
             return evaluate(expr.expression);
         }
 
-        LiteralValue visitUnaryExpr(UnaryExpr& expr) override {
-            LiteralValue value = evaluate(expr.right);
+        RuntimeValue visitUnaryExpr(UnaryExpr& expr) override {
+            LiteralValue value = getLiteralValue(evaluate(expr.right));
 
             switch(expr.Operator.type){
                 case TokenType::MINUS : 
                     if(value.second == "integer")
-                        return  {- std::get<Integer>(value.first),"integer"};
+                        return  LiteralValue{- std::get<Integer>(value.first),"integer"};
                     if(value.second == "decimal")
-                        return {- std::get<double>(value.first),"decimal"};
+                        return LiteralValue{- std::get<double>(value.first),"decimal"};
                     if(value.second == "BigDecimal")
-                        return {- std::get<BigDecimal>(value.first),"BigDecimal"};
+                        return LiteralValue{- std::get<BigDecimal>(value.first),"BigDecimal"};
                     throw RuntimeError(expr.Operator,"Unsupported operand");
 
                 case TokenType::BANG :
-                    return {!isTruthy(value),"boolean"};
+                    return LiteralValue{!isTruthy(value),"boolean"};
 
                 case TokenType::PRE_INCR :
                 case TokenType::POST_INCR : 
@@ -195,20 +180,20 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
             }
 
-            return {Nil(),"nil"};
+            return LiteralValue{Nil(),"nil"};
         }
 
-        LiteralValue visitVariableExpr(VariableExpr& expr) override {
+        RuntimeValue visitVariableExpr(VariableExpr& expr) override {
             return environment->get(expr.name);
         }
 
-        LiteralValue visitBinaryExpr(BinaryExpr& expr) override {
-           LiteralValue left = evaluate(expr.left);
-           LiteralValue right = evaluate(expr.right);
+        RuntimeValue visitBinaryExpr(BinaryExpr& expr) override {
+           LiteralValue left = getLiteralValue(evaluate(expr.left));
+           LiteralValue right = getLiteralValue(evaluate(expr.right));
 
            std::string targetType = getPriority(left.second) > getPriority(right.second) ? left.second : right.second;
-           auto [leftval,leftType] = promoteType(left,targetType,RuntimeError(expr.Operator,"Operands are of incompatible types!"));
-           auto [rightval,rightType] = promoteType(right,targetType,RuntimeError(expr.Operator,"Operands are of incompatible types!"));
+           auto [leftval,leftType] = promoteType(left,targetType,expr.Operator,RuntimeError(expr.Operator,"Operands are of incompatible types!"));
+           auto [rightval,rightType] = promoteType(right,targetType,expr.Operator,RuntimeError(expr.Operator,"Operands are of incompatible types!"));
            switch(expr.Operator.type){
                
                case TokenType::GREATER:
@@ -253,7 +238,6 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                     TYPE_BIN_OP("string",std::string,==,"boolean");
                     TYPE_BIN_OP("boolean",bool,==,"boolean");
                     break;
-
                case TokenType::PLUS:
                     TYPE_BIN_OP("integer",Integer,+,"integer");
                     TYPE_BIN_OP("decimal",double,+,"decimal");
@@ -301,7 +285,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                     }
                     if(targetType == "decimal"){
                         if(std::get<double>(rightval) != 0.0) 
-                            return {fmod(std::get<double>(leftval),std::get<double>(rightval)),"decimal"};
+                            return LiteralValue{fmod(std::get<double>(leftval),std::get<double>(rightval)),"decimal"};
                         throw RuntimeError(expr.Operator,"Modulo by zero error");
                     }
                     if(targetType == "BigDecimal"){
@@ -316,11 +300,32 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                     break;
           }
 
-           return {Nil(),"nil"};
+           return LiteralValue{Nil(),"nil"};
         }
 
-        LiteralValue visitLogicalExpr(LogicalExpr& expr) override {
-            LiteralValue left = evaluate(expr.left);
+        RuntimeValue visitCallExpr(CallExpr& expr) override {
+            RuntimeValue callee = evaluate(expr.callee);
+
+            std::vector<LiteralValue> arguments;
+            for(auto& argument : expr.arguments) {
+                arguments.push_back(getLiteralValue(evaluate(argument)));
+            }
+
+            if (auto function = std::get_if<std::shared_ptr<Callable>>(&callee)) {
+                int arity = (*function)->arity();
+                if(arity != arguments.size()) {
+                    throw RuntimeError(expr.paren,"Expected "+std::to_string(arity)+" arguments but got "+std::to_string(arguments.size())+".");
+                }
+                return (*function)->call(*this, arguments);
+            } else {
+                throw RuntimeError(expr.paren,"Can only call functions and classes.");
+            }
+            
+            return LiteralValue{Nil(),"nil"};
+        }
+
+        RuntimeValue visitLogicalExpr(LogicalExpr& expr) override {
+            LiteralValue left = getLiteralValue(evaluate(expr.left));
 
             switch (expr.Operator.type) {
                 case TokenType::OR:
@@ -332,71 +337,77 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                     return evaluate(expr.right);
 
                 case TokenType::PIPE_PIPE:
-                    if (isTruthy(left)) return { true, "boolean" };
-                    return { isTruthy(evaluate(expr.right)), "boolean" };
+                    if (isTruthy(left)) return LiteralValue{ true, "boolean" };
+                    return LiteralValue{ isTruthy(getLiteralValue(evaluate(expr.right))), "boolean" };
 
                 case TokenType::AMP_AMP:
-                    if (!isTruthy(left)) return { false, "boolean" };
-                    return { isTruthy(evaluate(expr.right)), "boolean" };
+                    if (!isTruthy(left)) return LiteralValue{ false, "boolean" };
+                    return LiteralValue{ isTruthy(getLiteralValue(evaluate(expr.right))), "boolean" };
 
                 default:
                     throw RuntimeError(expr.Operator,"Invalid logical operator.");
             }
         }
 
-        LiteralValue visitAssignExpr(AssignExpr& expr) override {
-            LiteralValue value = evaluate(expr.value);
+        RuntimeValue visitAssignExpr(AssignExpr& expr) override {
+            LiteralValue value = getLiteralValue(evaluate(expr.value));
             environment->assign(expr.name,value);
             return value;
         }
 
-        LiteralValue visitPrintStmt(PrintStmt& statement) override {
-            LiteralValue value = evaluate(statement.expression);
+        RuntimeValue visitPrintStmt(PrintStmt& statement) override {
+            LiteralValue value = getLiteralValue(evaluate(statement.expression));
             std::cout<<stringify(value);
-            return {Nil(),"nil"};
+            return LiteralValue{Nil(),"nil"};
         }
 
-        LiteralValue visitExprStmt(ExprStmt& statement) override{
+        RuntimeValue visitExprStmt(ExprStmt& statement) override{
             evaluate(statement.expression);
-            return {Nil(),"nil"};
+            return LiteralValue{Nil(),"nil"};
         }
 
-        LiteralValue visitVarStmt(VarStmt& statement) override {
-            LiteralValue value = {Nil(),"nil"};
+        RuntimeValue visitVarStmt(VarStmt& statement) override {
+            RuntimeValue value = LiteralValue{Nil(),"nil"};
             if(statement.initializer != nullptr){
                 value = evaluate(statement.initializer);
             }
 
             environment->define(statement.name.lexeme,value,statement.type.lexeme);
-            return {Nil(),"nil"};
+            return LiteralValue{Nil(),"nil"};
         }
 
-        LiteralValue visitIfStmt(IfStmt& statement) override {
-            if(isTruthy(evaluate(statement.ifCondition))){
+        RuntimeValue visitFunctionStmt(FunctionStmt& statement) override {
+            Function function(statement);
+            environment->define(statement.name.lexeme,std::make_shared<Function>(function),statement.kind);
+            return LiteralValue{Nil(),"nil"};
+        }
+
+        RuntimeValue visitIfStmt(IfStmt& statement) override {
+            if(isTruthy(getLiteralValue(evaluate(statement.ifCondition)))){
                 execute(statement.thenBranch);
-            } else if(statement.elifCondition != nullptr && isTruthy(evaluate(statement.elifCondition))){
+            } else if(statement.elifCondition != nullptr && isTruthy(getLiteralValue(evaluate(statement.elifCondition)))){
                 execute(statement.elifBranch);
             } else if(statement.elseBranch != nullptr){
                 execute(statement.elseBranch);
             }
-            return {Nil(),"nil"};
+            return LiteralValue{Nil(),"nil"};
         }
 
-        LiteralValue visitWhileStmt(WhileStmt& statement) override {
-            while(isTruthy(evaluate(statement.condition))){
+        RuntimeValue visitWhileStmt(WhileStmt& statement) override {
+            while(isTruthy(getLiteralValue(evaluate(statement.condition)))){
                 execute(statement.body);
             }
 
-            return {Nil(),"nil"};
+            return LiteralValue{Nil(),"nil"};
         }
 
-        LiteralValue visitForStmt(ForStmt& statement) override {
+        RuntimeValue visitForStmt(ForStmt& statement) override {
             if (statement.initializer != nullptr) {
                 execute(statement.initializer);
             }
 
             while (true) {
-                if (statement.condition != nullptr && !isTruthy(evaluate(statement.condition))) {
+                if (statement.condition != nullptr && !isTruthy(getLiteralValue(evaluate(statement.condition)))) {
                     break;
                 }
 
@@ -407,16 +418,24 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                 }
             }
 
-            return {Nil(), "nil"};
+            return LiteralValue{Nil(), "nil"};
         }
 
-        LiteralValue visitBlockStmt(BlockStmt& stmt) override {
-            Environment* newEnvironment = new Environment(environment);
+        RuntimeValue visitBlockStmt(BlockStmt& stmt) override {
+            Environment* newEnvironment = new Environment();
             executeBlock(stmt.statements, newEnvironment);
-            return {Nil(),"nil"};
+            return LiteralValue{Nil(),"nil"};
         }
 
     public:
+        Environment* globals = new Environment();
+        Environment* environment = new Environment(globals);
+
+        Interpreter() {
+            globals->define("clock",std::make_shared<ClockFunction>(),"function");
+        }
+
+        ~Interpreter() {}
 
         void interpret(std::vector<Statement>& statements){
             try{
@@ -424,7 +443,35 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                     execute(statement);
                 }
             } catch(RuntimeError& err){
-                std::cerr<<err.message()<<std::endl;
+                std::cerr<<err.message();
             }
         }
-};;
+
+        RuntimeValue evaluate(Expression& expression){
+            return expression->accept(*this);
+        }
+
+        void execute(Statement& statement){
+            statement->accept(*this);
+        }
+
+        void executeBlock(std::vector<Statement>& statements,Environment* newEnvironment){
+            EnvSwitch Switch(this->environment,newEnvironment);
+
+            for(auto& statement : statements){
+                execute(statement);
+            }
+        }
+
+};
+
+LiteralValue Function::call(Interpreter& interpreter,const std::vector<LiteralValue>& args) {
+    Environment* environment = new Environment(interpreter.globals);
+
+    for(int i = 0;i<declaration.params.size();i++){
+        environment->define(declaration.params[i].lexeme,args[i],args[i].second);
+    }
+
+    interpreter.executeBlock(declaration.body,environment);
+    return {Nil(),"nil"};
+}

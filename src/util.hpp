@@ -1,13 +1,21 @@
 #pragma once
 
 #include "types/conversions.hpp"
+#include <memory>
 #include <optional>
 #include <variant>
 #include <string>
 
+#define RED     "\033[1;31m"
+#define YELLOW  "\033[1;33m"
+#define WHITE   "\033[1;37m"
+#define RESET   "\033[0m"
+
+class Callable;
 using LiteralCore = std::variant<Integer,double,BigDecimal,std::string,bool,Nil>;
 using LiteralType = std::optional<LiteralCore>;
 using LiteralValue = std::pair<LiteralCore,std::string>;
+using RuntimeValue = std::variant<LiteralValue,std::shared_ptr<Callable>,std::nullptr_t>;
 
 LiteralValue getLiteralData(const LiteralType& expr) {
     LiteralValue result;
@@ -32,6 +40,13 @@ LiteralValue getLiteralData(const LiteralType& expr) {
     }, expr.value());
 
     return result;
+}
+
+LiteralValue getLiteralValue(const RuntimeValue& val) {
+    if(std::holds_alternative<LiteralValue>(val))
+        return std::get<LiteralValue>(val);
+    else 
+        return LiteralValue{Nil(),"nil"};
 }
 
 bool isNil(const LiteralCore& val) {

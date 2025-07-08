@@ -1,8 +1,6 @@
 #pragma once
 
 #include "expr.hpp"
-#include <vector>
-#include <optional>
 #include <memory>
 
 class Stmt;
@@ -10,6 +8,7 @@ class BlockStmt;
 class ExprStmt;
 class PrintStmt;
 class VarStmt;
+class FunctionStmt;
 class IfStmt;
 class WhileStmt;
 class ForStmt;
@@ -23,19 +22,20 @@ std::unique_ptr<T> makeStmt(Args&&... args) {
 
 class StmtVisitor {
 public:
-	virtual LiteralValue visitBlockStmt(BlockStmt& stmt) = 0;
-	virtual LiteralValue visitExprStmt(ExprStmt& stmt) = 0;
-	virtual LiteralValue visitPrintStmt(PrintStmt& stmt) = 0;
-	virtual LiteralValue visitVarStmt(VarStmt& stmt) = 0;
-	virtual LiteralValue visitIfStmt(IfStmt& stmt) = 0;
-	virtual LiteralValue visitWhileStmt(WhileStmt& stmt) = 0;
-	virtual LiteralValue visitForStmt(ForStmt& stmt) = 0;
+	virtual RuntimeValue visitBlockStmt(BlockStmt& stmt) = 0;
+	virtual RuntimeValue visitExprStmt(ExprStmt& stmt) = 0;
+	virtual RuntimeValue visitPrintStmt(PrintStmt& stmt) = 0;
+	virtual RuntimeValue visitVarStmt(VarStmt& stmt) = 0;
+	virtual RuntimeValue visitFunctionStmt(FunctionStmt& stmt) = 0;
+	virtual RuntimeValue visitIfStmt(IfStmt& stmt) = 0;
+	virtual RuntimeValue visitWhileStmt(WhileStmt& stmt) = 0;
+	virtual RuntimeValue visitForStmt(ForStmt& stmt) = 0;
 	virtual ~StmtVisitor() = default;
 };
 
 class Stmt {
 public:
-	virtual LiteralValue accept(StmtVisitor& visitor) = 0;
+	virtual RuntimeValue accept(StmtVisitor& visitor) = 0;
 	virtual ~Stmt() = default;
 };
 
@@ -43,8 +43,8 @@ class BlockStmt : public Stmt {
 public:
 	std::vector<Statement> statements;
 
-	BlockStmt(std::vector<Statement> statements) : statements(std::move(statements)) {}
-	LiteralValue accept(StmtVisitor& visitor) override {
+	BlockStmt(std::vector<Statement>&& statements) : statements(std::move(statements)) {}
+	RuntimeValue accept(StmtVisitor& visitor) override {
 		return visitor.visitBlockStmt(*this);
 	}
 };
@@ -54,7 +54,7 @@ public:
 	Expression expression;
 
 	ExprStmt(Expression expression) : expression(std::move(expression)) {}
-	LiteralValue accept(StmtVisitor& visitor) override {
+	RuntimeValue accept(StmtVisitor& visitor) override {
 		return visitor.visitExprStmt(*this);
 	}
 };
@@ -64,7 +64,7 @@ public:
 	Expression expression;
 
 	PrintStmt(Expression expression) : expression(std::move(expression)) {}
-	LiteralValue accept(StmtVisitor& visitor) override {
+	RuntimeValue accept(StmtVisitor& visitor) override {
 		return visitor.visitPrintStmt(*this);
 	}
 };
@@ -76,8 +76,21 @@ public:
 	Expression initializer;
 
 	VarStmt(Token name, Token type, Expression initializer) : name(name), type(type), initializer(std::move(initializer)) {}
-	LiteralValue accept(StmtVisitor& visitor) override {
+	RuntimeValue accept(StmtVisitor& visitor) override {
 		return visitor.visitVarStmt(*this);
+	}
+};
+
+class FunctionStmt : public Stmt {
+public:
+	Token name;
+	std::string kind;
+	std::vector<Token> params;
+	std::vector<Statement> body;
+
+	FunctionStmt(Token name, std::string kind, std::vector<Token> params, std::vector<Statement>&& body) : name(name), kind(kind), params(params), body(std::move(body)) {}
+	RuntimeValue accept(StmtVisitor& visitor) override {
+		return visitor.visitFunctionStmt(*this);
 	}
 };
 
@@ -90,7 +103,7 @@ public:
 	Statement elseBranch;
 
 	IfStmt(Expression ifCondition, Statement thenBranch, Expression elifCondition, Statement elifBranch, Statement elseBranch) : ifCondition(std::move(ifCondition)), thenBranch(std::move(thenBranch)), elifCondition(std::move(elifCondition)), elifBranch(std::move(elifBranch)), elseBranch(std::move(elseBranch)) {}
-	LiteralValue accept(StmtVisitor& visitor) override {
+	RuntimeValue accept(StmtVisitor& visitor) override {
 		return visitor.visitIfStmt(*this);
 	}
 };
@@ -101,7 +114,7 @@ public:
 	Statement body;
 
 	WhileStmt(Expression condition, Statement body) : condition(std::move(condition)), body(std::move(body)) {}
-	LiteralValue accept(StmtVisitor& visitor) override {
+	RuntimeValue accept(StmtVisitor& visitor) override {
 		return visitor.visitWhileStmt(*this);
 	}
 };
@@ -114,7 +127,28 @@ public:
 	Statement body;
 
 	ForStmt(Statement initializer, Expression condition, Expression increment, Statement body) : initializer(std::move(initializer)), condition(std::move(condition)), increment(std::move(increment)), body(std::move(body)) {}
-	LiteralValue accept(StmtVisitor& visitor) override {
+	RuntimeValue accept(StmtVisitor& visitor) override {
 		return visitor.visitForStmt(*this);
 	}
 };
+
+std::string getTypeOfExpression(Statement stmt) {
+	if (auto blockstmt = dynamic_cast<BlockStmt*>(stmt.get())) {
+		return "BlockStmt Expression";
+	} else if (auto exprstmt = dynamic_cast<ExprStmt*>(stmt.get())) {
+		return "Stmt Expression";
+	} else if (auto printstmt = dynamic_cast<PrintStmt*>(stmt.get())) {
+		return "PrintStmt Expression";
+	} else if (auto varstmt = dynamic_cast<VarStmt*>(stmt.get())) {
+		return "VarStmt Expression";
+	} else if (auto functionstmt = dynamic_cast<FunctionStmt*>(stmt.get())) {
+		return "FunctionStmt Expression";
+	} else if (auto ifstmt = dynamic_cast<IfStmt*>(stmt.get())) {
+		return "IfStmt Expression";
+	} else if (auto whilestmt = dynamic_cast<WhileStmt*>(stmt.get())) {
+		return "WhileStmt Expression";
+	} else if (auto forstmt = dynamic_cast<ForStmt*>(stmt.get())) {
+		return "ForStmt Expression";
+	}
+	return "Unknown Expression";
+}

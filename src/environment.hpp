@@ -1,12 +1,13 @@
-#include "Token.hpp"
+#include "token.hpp"
 #include <memory>
 #include <unordered_map>
 #include "error.hpp"
+#include "util.hpp"
 
 class Environment{
     private:
         std::unique_ptr<Environment> enclosing;
-        std::unordered_map<std::string, std::pair<LiteralValue,std::string>> values;
+        std::unordered_map<std::string, std::pair<RuntimeValue,std::string>> values;
 
     public:
 
@@ -14,11 +15,11 @@ class Environment{
 
         Environment(Environment* enclosing) : enclosing(enclosing) {}
 
-        void define(std::string name,LiteralValue value,std::string type){
-            values.insert({name,{value,type}});
+        void define(std::string name,RuntimeValue value,std::string type){
+            values[name] = {value,type};
         }
 
-        LiteralValue get(Token name){
+        RuntimeValue get(Token name){
             if(values.contains(name.lexeme)){
                 return values.at(name.lexeme).first;
             }

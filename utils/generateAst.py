@@ -23,13 +23,13 @@ def getHeaders():
 def getVisitorInterface():
     interface = f"class {baseClassName}Visitor {{\npublic:\n"
     for className in subClassNames:
-        interface += f"\tvirtual LiteralValue visit{className}({className}& {baseClassName.lower()}) = 0;\n"
+        interface += f"\tvirtual RuntimeValue visit{className}({className}& {baseClassName.lower()}) = 0;\n"
     interface += f"\tvirtual ~{baseClassName}Visitor() = default;\n}};\n\n"
     return interface
 
 def getBaseClass():
     baseClass = f"class {baseClassName} {{\npublic:\n"
-    baseClass += f"\tvirtual LiteralValue accept({baseClassName}Visitor& visitor) = 0;\n"
+    baseClass += f"\tvirtual RuntimeValue accept({baseClassName}Visitor& visitor) = 0;\n"
     baseClass += f"\tvirtual ~{baseClassName}() = default;\n}};\n"
     return baseClass
 
@@ -48,24 +48,26 @@ def getSubClasses():
             name = parts[-1]
             types.append(type_part)
             identifiers.append(name)
-            clean_name = name[1:] if name.startswith('*') else name
+            clean_name = name[2:] if name.startswith('**') else name[1:] if name.startswith('*') else name
             subClasses += f"\t{type_part} {clean_name};\n"
 
         subClasses += f"\n\t{className}("
         subClasses += ', '.join(
-            f"{types[j]} {identifiers[j][1:]}" if identifiers[j].startswith('*')
+            f"{types[j]}&& {identifiers[j][2:]}" if identifiers[j].startswith('**')
+            else f"{types[j]} {identifiers[j][1:]}" if identifiers[j].startswith('*')
             else f"{types[j]} {identifiers[j]}"
             for j in range(len(fields))
         )
         subClasses += ") : "
         subClasses += ', '.join(
-            f"{identifiers[j][1:]}(std::move({identifiers[j][1:]}))" if identifiers[j].startswith('*')
+            f"{identifiers[j][2:]}(std::move({identifiers[j][2:]}))" if identifiers[j].startswith('**')
+            else f"{identifiers[j][1:]}(std::move({identifiers[j][1:]}))" if identifiers[j].startswith('*')
             else f"{identifiers[j]}({identifiers[j]})"
             for j in range(len(fields))
         )
         subClasses += " {}\n"
 
-        subClasses += f"\tLiteralValue accept({baseClassName}Visitor& visitor) override {{\n"
+        subClasses += f"\tRuntimeValue accept({baseClassName}Visitor& visitor) override {{\n"
         subClasses += f"\t\treturn visitor.visit{className}(*this);\n\t}}\n}};\n"
     return subClasses
 

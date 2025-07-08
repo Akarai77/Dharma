@@ -48,7 +48,7 @@ enum class TokenType {
     ASYNC, AWAIT,
 
     // 🧘 Special Dharma Primitives
-    CHANT,               // print
+    PRINT,               // print
     MEDITATE,            // sleep / pause
     INVOKE,              // interpret another file
     YIELD,               // for coroutines / generators

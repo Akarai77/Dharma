@@ -1,5 +1,6 @@
 #pragma once
-#include "Token.hpp"
+#include "sourceManager.hpp"
+#include "token.hpp"
 #include <exception>
 #include <string>
 
@@ -12,51 +13,83 @@ class Adharma : public std::exception {
         virtual std::string message() const = 0;
 };
 
-class LexicalError : public Adharma {
-    int line;
-    std::string msg;
+class SyntaxError : public Adharma {
+    private:
+        int line;
+        int column;
+        std::string msg;
+        std::string contextLine;
+
     public:
-        LexicalError(const int& line,const std::string& msg)
-            : line(line), msg(msg) {}
+        SyntaxError(int line,int column,const std::string& msg)
+            : line(line), column(column), msg(msg) {
+                contextLine = SourceManager::instance().getLine(line);
+            }
 
         const char* what() const noexcept override {
-            return "LexicalError";
+            return "SyntaxError";
         }
 
         std::string message() const override {
-            return "[line " + std::to_string(line) + "] LexicalError : "+ msg;
+            std::string caretLine(column, ' ');
+            caretLine += "^";
+            return WHITE "[line " + std::to_string(line) + ", column " +
+                std::to_string(column) + "] " RED + what() + RESET ": " + msg +
+                "\n\n\t\t" + contextLine + "\n\t\t" RED + caretLine + RESET + "\n";
         }
 };
 
 class ParseError : public Adharma {
-    Token token;
-    std::string msg;
+    private:
+        Token token;
+        std::string msg;
+        std::string contextLine;
+    
     public:
         ParseError(const Token& token, const std::string& msg)
-            : token(token), msg(msg) {}
+            : token(token), msg(msg) {
+                contextLine = SourceManager::instance().getLine(token.line);
+            }
 
         const char* what() const noexcept override {
             return "ParseError";
         }
 
         std::string message() const override {
-            return "[line " + std::to_string(token.line) + "] ParseError at '" + token.lexeme + "': " + msg;
+            std::string caretLine(token.column, ' ');
+            caretLine += "^";
+            return WHITE "[line " + std::to_string(token.line) +
+                   ", column " + std::to_string(token.column) +
+                   "] " RED + what() + RESET ": '" + token.lexeme + "': " +
+                   msg + "\n\n\t\t" + contextLine + "\n\t\t" RED + caretLine + RESET + "\n";
         }
 };
 
 class RuntimeError : public Adharma {
-    Token token;
-    std::string msg;
+    private:
+        Token token;
+        std::string msg;
+        std::string contextLine;
+    
     public:
         RuntimeError(const Token& token, const std::string& msg)
-            : token(token), msg(msg) {}
+            : token(token), msg(msg) {
+                contextLine = SourceManager::instance().getLine(token.line);
+            }
 
         const char* what() const noexcept override {
             return "RuntimeError";
         }
 
         std::string message() const override {
-            return "[line " + std::to_string(token.line) + "] RuntimeError at '" + token.lexeme + "': " + msg;
+            std::string caretLine(token.column, ' ');
+            for(int i=0;i<token.lexeme.size();i++)
+                caretLine += "^";
+
+            return WHITE "[line " + std::to_string(token.line) +
+                    ", column " + std::to_string(token.column) +
+                    "] " RED + what() + RESET ": '" + token.lexeme + "': " +
+                    msg + "\n\n\t\t" + contextLine + "\n\t\t" RED + caretLine + RESET + "\n";
         }
 };
 

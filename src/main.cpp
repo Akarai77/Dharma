@@ -7,19 +7,20 @@
 #include <string>
 #include <filesystem>
 #include <vector>
-#include "error.hpp"
+#include "sourceManager.hpp"
 #include "parser.hpp"
 #include "stmt.hpp"
 #include "tokenizer.hpp"
 #include "interpreter.hpp"
 
 void run(const std::string& script){
-        Tokenizer tokenizer(script);
-        std::vector<Token> tokens = tokenizer.tokenize();
-        Parser parser(tokens);
-        std::vector<Statement> statements = parser.parse();
-        Interpreter interpreter;
-        interpreter.interpret(statements);
+    SourceManager::instance().setSource(script);
+    Tokenizer tokenizer(script);
+    std::vector<Token> tokens = tokenizer.tokenize();
+    Parser parser(tokens);
+    std::vector<Statement> statements = parser.parse();
+    Interpreter interpreter;
+    interpreter.interpret(statements);
 }
 
 void runFile(const std::string& path){
@@ -28,11 +29,7 @@ void runFile(const std::string& path){
     std::stringstream scriptStream;
     scriptStream << input.rdbuf();
     const std::string script = scriptStream.str();
-    try {
-        run(script);
-    } catch(const Adharma& err) {
-        std::cerr<<err.message()<<std::endl;
-    }
+    run(script);
 }
 
 void runPrompt(){
@@ -41,12 +38,7 @@ void runPrompt(){
         std::cout<<"> ";
         std::getline(std::cin, input);
         if(input == "") break;
-        try {
-            run(input);
-        } catch (const Adharma& err) {
-            std::cerr<<err.message()<<std::endl;
-        }
-        std::cout<<std::endl;
+        run(input);
     }
     std::cout<<"Thank You! May Your soul find the right path!";
 }

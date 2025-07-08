@@ -1,6 +1,6 @@
 #pragma once
-#include"Token.hpp"
-#include"error.hpp"
+#include "token.hpp"
+#include "error.hpp"
 #include <cctype>
 #include <optional>
 #include <string>
@@ -14,9 +14,8 @@ class Tokenizer{
         int start = 0;
         int current = 0;
         int line = 1;
-        int column = 1;
+        int lineStart = 0;
         bool semicolonFlag = false;
-        TokenType lastSignificant = TokenType::EOF_TOKEN;
 
         std::unordered_map<std::string, TokenType> keywords = {
             {"and"        ,TokenType::AND},
@@ -30,7 +29,7 @@ class Tokenizer{
             {"loop"       ,TokenType::LOOP},
             {"break"      ,TokenType::BREAK},
             {"continue"   ,TokenType::CONTINUE},
-            {"print"      ,TokenType::CHANT},
+            {"print"      ,TokenType::PRINT},
             {"const"      ,TokenType::CONST},
             {"fun"        ,TokenType::FUN},
             {"return"     ,TokenType::RETURN},
@@ -80,8 +79,7 @@ class Tokenizer{
             } else {
                 lexeme = source.substr(start,current-start);
             }
-            lastSignificant = type;
-            tokens.push_back(Token(type,lexeme,literal,line));
+            tokens.push_back(Token(type,lexeme,literal,line,current-lineStart-lexeme.size()));
         }
 
         bool match(char expected){
@@ -97,8 +95,7 @@ class Tokenizer{
             }
 
             if(isAtEnd()){
-                LexicalError(line,"Unterminated String! String should be terminated before EOL/EOF.");
-                return;
+                throw SyntaxError(line,current-lineStart,"Unterminated String! String should be terminated before EOL/EOF.");
             }
 
             advance();
@@ -195,7 +192,7 @@ class Tokenizer{
                 case ' ' : 
                 case '\r' :
                 case '\t' : break;
-                case '\n' : line++; break;
+                case '\n' : line++; lineStart = current; break;
                 
                 case '\'' : getString('\''); break;
                 case '"'  : getString('"'); break;
@@ -206,10 +203,9 @@ class Tokenizer{
                              getIdentifier();
                          } else {
                              std::string str(1,c);
-                             LexicalError(line,"Unexpected Character : '"+str+"'.");
+                             throw SyntaxError(line,current-lineStart,"Unexpected Character : '"+str+"'.");
                          }
                          break;
-
             }
         }
 
@@ -217,14 +213,16 @@ class Tokenizer{
         Tokenizer(std::string source): source(source) {}
 
         std::vector<Token> tokenize(){
-            
-            while(!isAtEnd()){
-                start = current;
-                scanToken();
+            try{
+                while(!isAtEnd()){
+                    start = current;
+                    scanToken();
+                }
+            } catch(SyntaxError& err) {
+                std::cerr<<err.message();
             }
 
-
-            tokens.push_back(Token(TokenType::EOF_TOKEN,"",std::nullopt,line));
+            tokens.push_back(Token(TokenType::EOF_TOKEN,"",std::nullopt,line,current-lineStart));
             return tokens;
         }
 

@@ -1,20 +1,5 @@
-var a = 100;
-var b : int = 200;
-print a+b;
-{
-    var a = 200;
-    print a*b;
+fun add(a,b) {
+    print a+b;
 }
-print a;
-{
-    a = "500"
-    print a;
-    {
-        a = true
-        print a
-    }
-}
-var c : boolean = true;
-var d : string = 'hello'; print a == c
-var e = " world"
-print d+e
+
+add(1,1);

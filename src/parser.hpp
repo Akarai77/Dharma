@@ -1,45 +1,50 @@
 /*
-program        -> declaration* EOF ;
-declaration    -> varDecl
-               |  statement ;
-statement      -> exprStmt
-               |  ifStmt
-               |  whileStmt
-               |  forStmt
-               |  printStmt
-               |  block ;
-ifStmt         -> "if" "(" expression ")" statement
-               (  "else" statement )? ;
-whileStmt      -> "while" "( expression )" statement ;
-forStmt        -> "for" "(" varDecl | exprStmt | ";" )
-                  expresion?    ";"
-                  expression? ")" statement ;
-block          -> "{" declaration* "}" ;
-exprStmt       -> expression ";" ;
-printStmt      -> "print" expression ";" ;
-varDecl        -> ("var"|"int"|"boolean"|"decimal"|"BigDecimal"|"string") IDENTIFIER (":" (int"|"decimal"|"BigDecimal"|string"|"boolean"))? ( "=" expression )? ";";
-expression     -> assignment ;
-assignment     -> IDENTIFIER ("=" | "+=" | "-=" | "*=" | "/=" | "%=") assignment
-               |  logic_or ;
-logic_or       -> logic_and (("or" | "||") logic_and)*;
-logic_and      -> equality (("and" | "&&") equality)*;
-equality       -> comparison ( ( "!=" | "==" ) comparison )* ;
-comparison     -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-term           -> factor ( ( "-" | "+" ) factor )* ;
-factor         -> unary ( ( "/" | "*" ) unary )* ;
-unary          -> ( "!" | "-" | "++" | "--" ) unary
-               |  primary ("++"|"--")? ;
-primary        -> VARIABLE | "true" | "false" | "nil"
-               |  "(" expression ")" ;
+program         -> declaration* EOF ;
+declaration     -> funcDecl
+                |  varDecl
+                |  statement ;
+statement       -> exprStmt
+                |  ifStmt
+                |  whileStmt
+                |  forStmt
+                |  printStmt
+                |  block ;
+funcDecl        -> "fun" IDENTIFIER "(" (IDENTIFIER ("," IDENTIFIER)*)? ")" block;
+varDecl         -> ("var"|"int"|"boolean"|"decimal"|"BigDecimal"|"string") IDENTIFIER (":" (int"|"decimal"|"BigDecimal"|string"|"boolean"))? ( "=" expression )? ";";
+exprStmt        -> expression ";" ;
+ifStmt          -> "if" "(" expression ")" statement
+                (  "else" statement )? ;
+whileStmt       -> "while" "( expression )" statement ;
+forStmt         -> "for" "(" varDecl | exprStmt | ";" )
+                    expresion?    ";"
+                    expression? ")" statement ;
+printStmt       -> "print" expression ";" ;
+block           -> "{" declaration* "}" ;
+expression      -> assignment ;
+assignment      -> IDENTIFIER ("=" | "+=" | "-=" | "*=" | "/=" | "%=") assignment
+                |  logic_or ;
+logic_or        -> logic_and (("or" | "||") logic_and)*;
+logic_and       -> equality (("and" | "&&") equality)*;
+equality        -> comparison ( ( "!=" | "==" ) comparison )* ;
+comparison      -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+term            -> factor ( ( "-" | "+" ) factor )* ;
+factor          -> unary ( ( "/" | "*" ) unary )* ;
+unary           -> ( "!" | "-" | "++" | "--" ) unary
+                | call ;
+call            -> primary ("++"|"--")?  ( "(" arguments? ")")* ;
+arguments       -> expression ("," expression) * ;
+primary         -> VARIABLE | "true" | "false" | "nil"
+                |  "(" expression ")" ;
 */
 
 #pragma once
 #include "util.hpp"
-#include "Token.hpp"
+#include "token.hpp"
 #include "error.hpp"
 #include "expr.hpp"
 #include "stmt.hpp"
 #include "tokenType.hpp"
+#include "warning.hpp"
 #include <algorithm>
 #include <bits/chrono.h>
 #include <initializer_list>
@@ -89,7 +94,11 @@ class Parser{
         Token consume(TokenType type, std::string message){
             if(type == TokenType::SEMICOLON) {
                 if(check(type)) return advance();
-                else return Token(TokenType::SEMICOLON,";",std::nullopt,peek().line); //warn implicit ;
+                else {
+                    Token t = Token(TokenType::SEMICOLON,";",std::nullopt,previous().line,previous().column+previous().lexeme.size());
+                    std::cout<<SemiColonWarning(t).message();
+                    return t;
+                }
             }
             if(check(type)) {
                 return advance();
@@ -100,11 +109,11 @@ class Parser{
 
         Token mapCompoundToBinary(Token Operator) {
             switch (Operator.type) {
-                case TokenType::PLUS_EQUAL: return Token(TokenType::PLUS, "+", std::nullopt, Operator.line);
-                case TokenType::MINUS_EQUAL: return Token(TokenType::MINUS, "-", std::nullopt, Operator.line);
-                case TokenType::STAR_EQUAL: return Token(TokenType::STAR, "*", std::nullopt, Operator.line);
-                case TokenType::SLASH_EQUAL: return Token(TokenType::SLASH, "/", std::nullopt, Operator.line);
-                case TokenType::PERCENT_EQUAL: return Token(TokenType::PERCENT, "%",std::nullopt,Operator.line);
+                case TokenType::PLUS_EQUAL: return Token(TokenType::PLUS, "+", std::nullopt, Operator.line,Operator.column);
+                case TokenType::MINUS_EQUAL: return Token(TokenType::MINUS, "-", std::nullopt, Operator.line,Operator.column);
+                case TokenType::STAR_EQUAL: return Token(TokenType::STAR, "*", std::nullopt, Operator.line,Operator.column);
+                case TokenType::SLASH_EQUAL: return Token(TokenType::SLASH, "/", std::nullopt, Operator.line,Operator.column);
+                case TokenType::PERCENT_EQUAL: return Token(TokenType::PERCENT, "%",std::nullopt,Operator.line,Operator.column);
                 default: throw ParseError(Operator,"Unknown Compound operator : '"+Operator.lexeme+"'.");
             }
         }
@@ -161,7 +170,7 @@ class Parser{
                     case TokenType::TYPE:
                     case TokenType::IF:
                     case TokenType::WHILE:
-                    case TokenType::CHANT:
+                    case TokenType::PRINT:
                     case TokenType::RETURN:
                         return;
                 }
@@ -232,13 +241,14 @@ class Parser{
                 LiteralValue lit = getLiteralData(previous().literal);
 
                 if (expectedType.has_value() && expectedType.value().lexeme != "var") {
-                    if(expectedType.value().lexeme == "integer") previous().type = TokenType::INTEGER;
-                    if(expectedType.value().lexeme == "decimal")  previous().type = TokenType::DECIMAL;
-                    if(expectedType.value().lexeme == "BigDecimal") previous().type = TokenType::BIGDECIMAL;
-                    if(expectedType.value().lexeme == "string") previous().type = TokenType::STRING;
-                    if(expectedType.value().lexeme == "boolean") previous().type = TokenType::BOOLEAN;
                     std::string expected = expectedType->lexeme;
                     std::string actual = lit.second;
+                    if(expected == "int") expected = "integer";
+                    if(expected == "integer") previous().type = TokenType::INTEGER;
+                    if(expected == "decimal")  previous().type = TokenType::DECIMAL;
+                    if(expected == "BigDecimal") previous().type = TokenType::BIGDECIMAL;
+                    if(expected == "string") previous().type = TokenType::STRING;
+                    if(expected == "boolean") previous().type = TokenType::BOOLEAN;
 
                     if (actual != expected) {
                         if (!isConvertible(actual, expected)) {
@@ -266,6 +276,36 @@ class Parser{
             throw ParseError(peek(),"Expect Expression");
         }
 
+        Expression getCall(std::optional<Token> type = std::nullopt) {
+            Expression expr = getPrimary(type);
+
+            if (match({TokenType::PLUS_PLUS,TokenType::MINUS_MINUS})) {
+                Token Operator = previous();
+                Operator.type = (Operator.type == TokenType::PLUS_PLUS) ? TokenType::POST_INCR : TokenType::POST_DECR;
+                return makeExpr<UnaryExpr>(Operator, std::move(expr));
+            }
+
+            while(true) {
+                if(match({TokenType::LEFT_PAREN})) {
+                    std::vector<Expression> arguments;
+                    if(!check(TokenType::RIGHT_PAREN)) {
+                        do {
+                            if(arguments.size() > 255)
+                                std::cerr<<ParseError(peek(),"Cant have more than 255 arguments!").message();
+
+                            arguments.push_back(getExpression());
+                        } while(match({TokenType::COMMA}));
+                    }
+                    Token paren = consume(TokenType::RIGHT_PAREN,"Expect ')' after arguments.");
+                    expr = makeExpr<CallExpr>(std::move(expr),paren,std::move(arguments));
+                } else {
+                    break;
+                }
+            }
+
+            return expr;
+        }
+
         Expression getUnary(std::optional<Token> type = std::nullopt){
             if(match({TokenType::BANG,TokenType::MINUS,TokenType::PLUS_PLUS,TokenType::MINUS_MINUS})){
                 Token Operator = previous();
@@ -277,15 +317,7 @@ class Parser{
                 return makeExpr<UnaryExpr>(Operator,std::move(right));
             }
             
-            Expression expr = getPrimary(type);
-
-            if (match({TokenType::PLUS_PLUS,TokenType::MINUS_MINUS})) {
-                Token Operator = previous();
-                Operator.type = (Operator.type == TokenType::PLUS_PLUS) ? TokenType::POST_INCR : TokenType::POST_DECR;
-                return makeExpr<UnaryExpr>(Operator, std::move(expr));
-            }
-
-            return expr;
+            return getCall(type);
         }
 
         Expression getFactor(std::optional<Token> type = std::nullopt){
@@ -363,13 +395,18 @@ class Parser{
         Expression getAssignment(std::optional<Token> type = std::nullopt){
             Expression expr = getLogicalOr(type);
 
-            if(match({TokenType::EQUAL,TokenType::PLUS_EQUAL,TokenType::MINUS_EQUAL,TokenType::STAR_EQUAL,TokenType::SLASH_EQUAL,TokenType::PERCENT_EQUAL})){
+            if(match({TokenType::EQUAL,TokenType::PLUS_EQUAL,TokenType::MINUS_EQUAL,
+                        TokenType::STAR_EQUAL,TokenType::SLASH_EQUAL,TokenType::PERCENT_EQUAL})){
                 Token Operator = previous();
                 Expression value = getAssignment();
 
                 if(auto varExpr = dynamic_cast<VariableExpr*>(expr.get())){
                     if(Operator.type != TokenType::EQUAL){
-                        value = makeExpr<BinaryExpr>(std::move(expr),mapCompoundToBinary(Operator),std::move(value));
+                        value = makeExpr<BinaryExpr>(
+                                std::move(expr),
+                                mapCompoundToBinary(Operator),
+                                std::move(value)
+                               );
                     }
 
                     Token name = varExpr->name;
@@ -386,6 +423,29 @@ class Parser{
             return getAssignment(type);            
         }
 
+        Statement getFunctionStatement(std::string kind) {
+            Token name = consume(TokenType::IDENTIFIER,"Expect" + kind + "name.");
+            consume(TokenType::LEFT_PAREN,"Expect '(' after "+kind+" name.");
+            std::vector<Token> parameters;
+            if(!check(TokenType::RIGHT_PAREN)){
+                do {
+                    if(parameters.size() > 255) {
+                        throw ParseError(peek(),"Cannot have more than 255 parameters.");
+                    }
+
+                    parameters.push_back(
+                        consume(TokenType::IDENTIFIER,"Expect parameter name")
+                    );
+                } while (match({TokenType::COMMA}));
+            }
+
+            consume(TokenType::RIGHT_PAREN,"Expect ')' after parameters.");
+            consume(TokenType::LEFT_BRACE,"Expect '{' before "+kind+" body.");
+
+            std::vector<Statement> body = std::move(getBlockStatement());
+            return makeStmt<FunctionStmt>(name,kind,parameters,std::move(body));
+        }
+
         Statement getVarDeclaration(Token type){
             Token name = consume(TokenType::IDENTIFIER,"Expect Variable name");
 
@@ -395,9 +455,12 @@ class Parser{
                     throw ParseError(previous(),"Invalid type annotation: 'var' cannot be used as a type annotation.");
                 if(type.lexeme != "var"){
                     if(type.lexeme == annotatedType.lexeme)
-                        throw ParseError(previous(),"Redundant type annotation: variable '"+name.lexeme+"' already declared as '"+type.lexeme+"'.");
+                        throw ParseError(previous(),"Redundant type annotation: variable '"+
+                                name.lexeme+"' already declared as '"+type.lexeme+"'.");
                     else
-                        throw ParseError(previous(),"Conflicting type annotations for '"+name.lexeme+"' : declared as '"+type.lexeme+"' but annotated as '"+annotatedType.lexeme+"'.");
+                        throw ParseError(previous(),"Conflicting type annotations for '"+
+                                name.lexeme+"' : declared as '"+type.lexeme+
+                                "' but annotated as '"+annotatedType.lexeme+"'.");
                 }
                 type = annotatedType;
             }
@@ -411,7 +474,7 @@ class Parser{
             return makeStmt<VarStmt>(name,type,std::move(initializer));
         }
 
-        Statement getPrintStmt(){
+        Statement getPrintStatement(){
             Expression value = getExpression();
             consume(TokenType::SEMICOLON, "Expect ';' after expression.");
             return makeStmt<PrintStmt>(std::move(value));
@@ -443,7 +506,13 @@ class Parser{
                 elseBranch = getStatement();
             }
 
-            return makeStmt<IfStmt>(std::move(ifCondition),std::move(thenBranch),std::move(elifCondition),std::move(elifBranch),std::move(elseBranch));
+            return makeStmt<IfStmt>(
+                    std::move(ifCondition),
+                    std::move(thenBranch),
+                    std::move(elifCondition),
+                    std::move(elifBranch),
+                    std::move(elseBranch)
+                  );
         }
 
         Statement getWhileStatement(){
@@ -482,7 +551,12 @@ class Parser{
             consume(TokenType::RIGHT_PAREN,"Expect ')' after clauses.");
             Statement body = getStatement();
 
-            return makeStmt<ForStmt>(std::move(initializer),std::move(condition),std::move(increment),std::move(body));
+            return makeStmt<ForStmt>(
+                    std::move(initializer),
+                    std::move(condition),
+                    std::move(increment),
+                    std::move(body)
+                   );
 
         }
 
@@ -498,7 +572,8 @@ class Parser{
         }
 
         Statement getStatement(){
-            if(match({TokenType::CHANT})) return getPrintStmt();
+            if(match({TokenType::FUN})) return getFunctionStatement("function");
+            if(match({TokenType::PRINT})) return getPrintStatement();
             if(match({TokenType::IF})) return getIfStatement();
             if(match({TokenType::WHILE})) return getWhileStatement();
             if(match({TokenType::FOR})) return getForStatement();
@@ -511,8 +586,8 @@ class Parser{
             try{
                 if(match({TokenType::TYPE})) return getVarDeclaration(previous());
                 return getStatement();
-            } catch(ParseError& error){
-                std::cerr<<error.message()<<std::endl;
+           } catch(ParseError& error){
+                std::cerr<<error.message();
                 synchronize();
                 return nullptr;
             }
@@ -523,8 +598,12 @@ class Parser{
 
         std::vector<Statement> parse() {
             std::vector<Statement> statements;
-            while(!isAtEnd())
-                statements.push_back(getDeclaration());
+            while (!isAtEnd()) {
+                Statement stmt = getDeclaration();
+                if (stmt != nullptr) {
+                    statements.push_back(std::move(stmt));
+                }
+            }
             return statements;
         }
 };
