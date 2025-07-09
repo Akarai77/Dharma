@@ -33,3 +33,15 @@ public:
     std::string toString() const override { return "<native fn>"; }
 };
 
+class TypeOfFunction : public Callable {
+    public:
+        LiteralValue call(Interpreter& interpreter,const std::vector<LiteralValue>& args) override {
+            if(args[0].second == "nil")
+                return LiteralValue{std::string("variable"),"string"};
+            return LiteralValue{args[0].second,"string"};
+        }
+
+        int arity() const override { return 1; }
+
+        std::string toString() const override { return "<native fn>"; }
+};

@@ -377,7 +377,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             if(statement.initializer != nullptr){
                 value = evaluate(statement.initializer);
             }
-
+            
             environment->define(statement.name.lexeme,value,statement.type.lexeme);
             return LiteralValue{Nil(),"nil"};
         }
@@ -446,6 +446,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
         Interpreter() : environment(globals) {
             globals->define("clock",makeCallable<ClockFunction>(),"function");
+            globals->define("typeOf",makeCallable<TypeOfFunction>(),"function");
         }
 
         ~Interpreter() {}

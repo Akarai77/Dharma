@@ -242,7 +242,7 @@ class Parser{
             if(match({TokenType::VARIABLE})) {
                 LiteralValue lit = getLiteralData(previous().literal);
 
-                if (expectedType.has_value() && expectedType.value().lexeme != "var") {
+                if (expectedType.has_value()) {
                     std::string expected = expectedType->lexeme;
                     std::string actual = lit.second;
                     if(expected == "int") expected = "integer";
