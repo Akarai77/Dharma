@@ -14,10 +14,12 @@
 #define RESET   "\033[0m"
 
 class Callable;
+using CallAble = std::shared_ptr<Callable>;
+
 using LiteralCore = std::variant<Integer,double,BigDecimal,std::string,bool,Nil>;
 using LiteralType = std::optional<LiteralCore>;
 using LiteralValue = std::pair<LiteralCore,std::string>;
-using RuntimeValue = std::variant<LiteralValue,std::shared_ptr<Callable>,std::nullptr_t>;
+using RuntimeValue = std::variant<LiteralValue,CallAble,std::nullptr_t>;
 
 LiteralValue getLiteralData(const LiteralType& expr) {
     LiteralValue result;

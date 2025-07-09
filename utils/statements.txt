@@ -9,3 +9,4 @@ FunctionStmt -> Token name, std::string kind, std::vector<Token> params, std::ve
 IfStmt -> Expression *ifCondition, Statement *thenBranch,Expression *elifCondition,Statement *elifBranch, Statement *elseBranch
 WhileStmt -> Expression *condition, Statement *body
 ForStmt -> Statement *initializer, Expression *condition, Expression *increment, Statement *body
+ReturnStmt -> Token keyword, Expression *value

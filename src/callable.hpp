@@ -5,7 +5,6 @@
 #include <memory>
 
 class Interpreter;
-using CallAble = std::shared_ptr<Callable>; 
 
 template <typename T, typename... Args>
 std::shared_ptr<T> makeCallable(Args&&... args) {

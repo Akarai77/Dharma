@@ -1,7 +1,8 @@
 #pragma once
+
 #include "callable.hpp"
-#include "interpreter.hpp"
 #include "stmt.hpp"
+#include "return.hpp"
 
 class Function : public Callable {
     private:
@@ -17,6 +18,6 @@ class Function : public Callable {
         LiteralValue call(Interpreter& interpreter,const std::vector<LiteralValue>& args) override;
 
         std::string toString() const override {
-            return "<fn" + declaration.name.lexeme + ">";
+            return "<fn " + declaration.name.lexeme + " >";
         }
 };

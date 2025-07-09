@@ -255,7 +255,7 @@ class Integer {
         }
 
         Integer& operator--(){
-            *this += 1;
+            *this -= 1;
             return *this;
         }
 

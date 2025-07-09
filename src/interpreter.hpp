@@ -6,7 +6,6 @@
 #include "stmt.hpp"
 #include "tokenType.hpp"
 #include "environment.hpp"
-#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <utility>
@@ -80,24 +79,27 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             throw err;
         }
 
-        std::string stringify(LiteralValue result) const {
-            std::string text;
+        std::string stringify(RuntimeValue result) const {
 
-            if (result.second == "boolean") {
-                text = std::get<bool>(result.first) ? "true" : "false";
-            } else if (result.second == "integer") {
-                text = (std::get<Integer>(result.first)).toString();
-            } else if (result.second == "decimal") {
-                text = cleanDouble(std::get<double>(result.first));
-            } else if(result.second == "BigDecimal") {
-                text = (std::get<BigDecimal>(result.first)).toString();
-            } else if (result.second == "string") {
-                text = "'"+std::get<std::string>(result.first)+"'";
-            } else {
-                text = "nil";
+            if(std::holds_alternative<CallAble>(result)) {
+                CallAble callee = std::get<CallAble>(result);
+                return callee->toString();
             }
 
-            return text;
+            LiteralValue lit = getLiteralValue(result);
+            if (lit.second == "boolean") {
+                return std::get<bool>(lit.first) ? "true" : "false";
+            } else if (lit.second == "integer") {
+                return (std::get<Integer>(lit.first)).toString();
+            } else if (lit.second == "decimal") {
+                return cleanDouble(std::get<double>(lit.first));
+            } else if(lit.second == "BigDecimal") {
+                return (std::get<BigDecimal>(lit.first)).toString();
+            } else if (lit.second == "string") {
+                return "'"+std::get<std::string>(lit.first)+"'";
+            } else {
+                return "nil";
+            }
         }
 
         RuntimeValue visitLiteralExpr(LiteralExpr& expr) override {
@@ -151,6 +153,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                             throw RuntimeError(expr.Operator,"Cannot apply '++' to non-assignable expression.");
                         }
                     }
+                    break;
 
                 case TokenType::PRE_DECR :
                 case TokenType::POST_DECR :
@@ -179,6 +182,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                             throw RuntimeError(expr.Operator,"Cannot apply '--' to non-assignable expression.");
                         }
                     }
+                    break;
 
             }
 
@@ -358,7 +362,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         }
 
         RuntimeValue visitPrintStmt(PrintStmt& statement) override {
-            LiteralValue value = getLiteralValue(evaluate(statement.expression));
+            RuntimeValue value = evaluate(statement.expression);
             std::cout<<stringify(value)<<std::endl;
             return LiteralValue{Nil(),"nil"};
         }
@@ -380,7 +384,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
         RuntimeValue visitFunctionStmt(FunctionStmt& statement) override {
             Function function(statement);
-            environment->define(statement.name.lexeme,std::make_shared<Function>(function),statement.kind);
+            environment->define(statement.name.lexeme,makeCallable<Function>(function),statement.kind);
             return LiteralValue{Nil(),"nil"};
         }
 
@@ -423,18 +427,25 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             return LiteralValue{Nil(), "nil"};
         }
 
+        RuntimeValue visitReturnStmt(ReturnStmt& statement) override {
+            RuntimeValue value = nullptr;
+            if(statement.value != nullptr) value = evaluate(statement.value);
+
+            throw Return(value);
+        }
+
         RuntimeValue visitBlockStmt(BlockStmt& stmt) override {
-            Environment newEnvironment;
+            Environment* newEnvironment = new Environment(environment);
             executeBlock(stmt.statements, newEnvironment);
             return LiteralValue{Nil(),"nil"};
         }
 
     public:
-        Environment globals;
-        Environment environment;
+        Environment* globals = new Environment();
+        Environment* environment = new Environment();
 
-        Interpreter() : globals(std::make_shared<Env>()), environment(globals) {
-            globals->define("clock",std::make_shared<ClockFunction>(),"function");
+        Interpreter() : environment(globals) {
+            globals->define("clock",makeCallable<ClockFunction>(),"function");
         }
 
         ~Interpreter() {}
@@ -457,7 +468,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             statement->accept(*this);
         }
 
-        void executeBlock(std::vector<Statement>& statements,Environment newEnvironment){
+        void executeBlock(std::vector<Statement>& statements,Environment* newEnvironment){
             EnvSwitch Switch(this->environment,newEnvironment);
 
             for(auto& statement : statements){
@@ -468,12 +479,16 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 };
 
 LiteralValue Function::call(Interpreter& interpreter,const std::vector<LiteralValue>& args) {
-    Environment environment(interpreter.globals);
+    Environment* environment = new Environment(interpreter.globals);
 
     for(int i = 0;i<declaration.params.size();i++){
         environment->define(declaration.params[i].lexeme,args[i],args[i].second);
     }
 
-    interpreter.executeBlock(declaration.body,std::move(environment));
+    try {
+        interpreter.executeBlock(declaration.body,environment);
+    } catch (Return& returnValue) {
+        return getLiteralValue(returnValue.value);
+    }
     return {Nil(),"nil"};
 }

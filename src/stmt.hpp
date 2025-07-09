@@ -12,6 +12,7 @@ class FunctionStmt;
 class IfStmt;
 class WhileStmt;
 class ForStmt;
+class ReturnStmt;
 
 using Statement = std::unique_ptr<Stmt>;
 
@@ -30,6 +31,7 @@ public:
 	virtual RuntimeValue visitIfStmt(IfStmt& stmt) = 0;
 	virtual RuntimeValue visitWhileStmt(WhileStmt& stmt) = 0;
 	virtual RuntimeValue visitForStmt(ForStmt& stmt) = 0;
+	virtual RuntimeValue visitReturnStmt(ReturnStmt& stmt) = 0;
 	virtual ~StmtVisitor() = default;
 };
 
@@ -132,6 +134,17 @@ public:
 	}
 };
 
+class ReturnStmt : public Stmt {
+public:
+	Token keyword;
+	Expression value;
+
+	ReturnStmt(Token keyword, Expression value) : keyword(keyword), value(std::move(value)) {}
+	RuntimeValue accept(StmtVisitor& visitor) override {
+		return visitor.visitReturnStmt(*this);
+	}
+};
+
 std::string getTypeOfExpression(Statement stmt) {
 	if (auto blockstmt = dynamic_cast<BlockStmt*>(stmt.get())) {
 		return "BlockStmt Expression";
@@ -149,6 +162,8 @@ std::string getTypeOfExpression(Statement stmt) {
 		return "WhileStmt Expression";
 	} else if (auto forstmt = dynamic_cast<ForStmt*>(stmt.get())) {
 		return "ForStmt Expression";
+	} else if (auto returnstmt = dynamic_cast<ReturnStmt*>(stmt.get())) {
+		return "ReturnStmt Expression";
 	}
 	return "Unknown Expression";
 }

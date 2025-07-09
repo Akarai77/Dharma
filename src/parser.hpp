@@ -8,6 +8,7 @@ statement       -> exprStmt
                 |  whileStmt
                 |  forStmt
                 |  printStmt
+                |  returnStmt
                 |  block ;
 funcDecl        -> "fun" IDENTIFIER "(" (IDENTIFIER ("," IDENTIFIER)*)? ")" block;
 varDecl         -> ("var"|"int"|"boolean"|"decimal"|"BigDecimal"|"string") IDENTIFIER (":" (int"|"decimal"|"BigDecimal"|string"|"boolean"))? ( "=" expression )? ";";
@@ -19,6 +20,7 @@ forStmt         -> "for" "(" varDecl | exprStmt | ";" )
                     expresion?    ";"
                     expression? ")" statement ;
 printStmt       -> "print" expression ";" ;
+returnStmt      -> "return" expression? ";" ;
 block           -> "{" declaration* "}" ;
 expression      -> assignment ;
 assignment      -> IDENTIFIER ("=" | "+=" | "-=" | "*=" | "/=" | "%=") assignment
@@ -560,6 +562,17 @@ class Parser{
 
         }
 
+        Statement getReturnStatement() {
+            Token keyword = previous();
+            Expression value = nullptr;
+            if(!check(TokenType::SEMICOLON)) {
+                value = getExpression();
+            }
+
+            consume(TokenType::SEMICOLON,"Expect ';' after return value.");
+            return makeStmt<ReturnStmt>(keyword,std::move(value));
+        }
+
         std::vector<Statement> getBlockStatement(){
             std::vector<Statement> statements;
 
@@ -577,6 +590,7 @@ class Parser{
             if(match({TokenType::IF})) return getIfStatement();
             if(match({TokenType::WHILE})) return getWhileStatement();
             if(match({TokenType::FOR})) return getForStatement();
+            if(match({TokenType::RETURN})) return getReturnStatement();
             if(match({TokenType::LEFT_BRACE})) return makeStmt<BlockStmt>(getBlockStatement());
 
             return getExprStatement();
