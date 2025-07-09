@@ -33,7 +33,7 @@ class SyntaxError : public Adharma {
         std::string message() const override {
             std::string caretLine(column, ' ');
             caretLine += "^";
-            return WHITE "[line " + std::to_string(line) + ", column " +
+            return CYAN "[line " + std::to_string(line) + ", column " +
                 std::to_string(column) + "] " RED + what() + RESET ": " + msg +
                 "\n\n\t\t" + contextLine + "\n\t\t" RED + caretLine + RESET + "\n";
         }
@@ -58,7 +58,7 @@ class ParseError : public Adharma {
         std::string message() const override {
             std::string caretLine(token.column, ' ');
             caretLine += "^";
-            return WHITE "[line " + std::to_string(token.line) +
+            return CYAN "[line " + std::to_string(token.line) +
                    ", column " + std::to_string(token.column) +
                    "] " RED + what() + RESET ": '" + token.lexeme + "': " +
                    msg + "\n\n\t\t" + contextLine + "\n\t\t" RED + caretLine + RESET + "\n";
@@ -86,7 +86,7 @@ class RuntimeError : public Adharma {
             for(int i=0;i<token.lexeme.size();i++)
                 caretLine += "^";
 
-            return WHITE "[line " + std::to_string(token.line) +
+            return CYAN "[line " + std::to_string(token.line) +
                     ", column " + std::to_string(token.column) +
                     "] " RED + what() + RESET ": '" + token.lexeme + "': " +
                     msg + "\n\n\t\t" + contextLine + "\n\t\t" RED + caretLine + RESET + "\n";

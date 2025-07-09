@@ -35,7 +35,7 @@ void runFile(const std::string& path){
 void runPrompt(){
     std::string input;
     while(true){
-        std::cout<<"> ";
+        std::cout<<ORANGE ">> " RESET;
         std::getline(std::cin, input);
         if(input == "") break;
         run(input);

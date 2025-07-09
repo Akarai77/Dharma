@@ -33,7 +33,7 @@ class SemiColonWarning : public Warning {
             std::string caretLine(token.column, ' ');
             caretLine += "^";
 
-            return WHITE "[line " + std::to_string(token.line) +
+            return CYAN "[line " + std::to_string(token.line) +
                 ", column " + std::to_string(token.column) +
                 "] " YELLOW + what() + RESET ": Implicit semicolon inserted.\n\n\t\t" +
                 contextLine + "\n\t\t" YELLOW + caretLine + RESET + "\n";
@@ -61,7 +61,7 @@ class ImplicitConversionWarning : public Warning {
             std::string caretLine(token.column, ' ');
             caretLine += "^";
 
-            return WHITE "[line " + std::to_string(token.line) +
+            return CYAN "[line " + std::to_string(token.line) +
                 ", column " + std::to_string(token.column) +
                 "] " YELLOW + what() + RESET ": Implicit conversion from '" +
                 actualType + "' to '" + targetType + "'.\n\n\t\t" +

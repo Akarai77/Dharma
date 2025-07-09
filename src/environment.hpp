@@ -4,16 +4,19 @@
 #include "error.hpp"
 #include "util.hpp"
 
-class Environment{
+class Env;
+using Environment = std::shared_ptr<Env>;
+
+class Env{
     private:
-        std::unique_ptr<Environment> enclosing;
+        Environment enclosing;
         std::unordered_map<std::string, std::pair<RuntimeValue,std::string>> values;
 
     public:
 
-        Environment() : enclosing(nullptr) {}
+        Env() : enclosing(nullptr) {}
 
-        Environment(Environment* enclosing) : enclosing(enclosing) {}
+        Env(Environment enclosing) : enclosing(enclosing) {}
 
         void define(std::string name,RuntimeValue value,std::string type){
             values[name] = {value,type};
@@ -49,11 +52,11 @@ class Environment{
 };
 
 class EnvSwitch {
-    Environment*& target;
-    Environment* previous;
+    Environment& target;
+    Environment previous;
 
 public:
-    EnvSwitch(Environment*& target, Environment*& newEnv)
+    EnvSwitch(Environment& target, Environment newEnv)
         : target(target), previous(target)
     {
         target = newEnv;

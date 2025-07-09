@@ -6,8 +6,10 @@
 #include "stmt.hpp"
 #include "tokenType.hpp"
 #include "environment.hpp"
+#include <algorithm>
 #include <cmath>
 #include <memory>
+#include <utility>
 #include "error.hpp"
 #include "util.hpp"
 #include "callable.hpp"
@@ -357,7 +359,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
         RuntimeValue visitPrintStmt(PrintStmt& statement) override {
             LiteralValue value = getLiteralValue(evaluate(statement.expression));
-            std::cout<<stringify(value);
+            std::cout<<stringify(value)<<std::endl;
             return LiteralValue{Nil(),"nil"};
         }
 
@@ -422,16 +424,16 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         }
 
         RuntimeValue visitBlockStmt(BlockStmt& stmt) override {
-            Environment* newEnvironment = new Environment();
+            Environment newEnvironment;
             executeBlock(stmt.statements, newEnvironment);
             return LiteralValue{Nil(),"nil"};
         }
 
     public:
-        Environment* globals = new Environment();
-        Environment* environment = new Environment(globals);
+        Environment globals;
+        Environment environment;
 
-        Interpreter() {
+        Interpreter() : globals(std::make_shared<Env>()), environment(globals) {
             globals->define("clock",std::make_shared<ClockFunction>(),"function");
         }
 
@@ -455,7 +457,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             statement->accept(*this);
         }
 
-        void executeBlock(std::vector<Statement>& statements,Environment* newEnvironment){
+        void executeBlock(std::vector<Statement>& statements,Environment newEnvironment){
             EnvSwitch Switch(this->environment,newEnvironment);
 
             for(auto& statement : statements){
@@ -466,12 +468,12 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 };
 
 LiteralValue Function::call(Interpreter& interpreter,const std::vector<LiteralValue>& args) {
-    Environment* environment = new Environment(interpreter.globals);
+    Environment environment(interpreter.globals);
 
     for(int i = 0;i<declaration.params.size();i++){
         environment->define(declaration.params[i].lexeme,args[i],args[i].second);
     }
 
-    interpreter.executeBlock(declaration.body,environment);
+    interpreter.executeBlock(declaration.body,std::move(environment));
     return {Nil(),"nil"};
 }
