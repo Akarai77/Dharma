@@ -89,8 +89,9 @@ public:
 	std::string kind;
 	std::vector<Statement> params;
 	std::vector<Statement> body;
+	Token returnType;
 
-	FunctionStmt(Token name, std::string kind, std::vector<Statement>&& params, std::vector<Statement>&& body) : name(name), kind(kind), params(std::move(params)), body(std::move(body)) {}
+	FunctionStmt(Token name, std::string kind, std::vector<Statement>&& params, std::vector<Statement>&& body, Token returnType) : name(name), kind(kind), params(std::move(params)), body(std::move(body)), returnType(returnType) {}
 	RuntimeValue accept(StmtVisitor& visitor) override {
 		return visitor.visitFunctionStmt(*this);
 	}
@@ -138,8 +139,9 @@ class ReturnStmt : public Stmt {
 public:
 	Token keyword;
 	Expression value;
+	Token retType;
 
-	ReturnStmt(Token keyword, Expression value) : keyword(keyword), value(std::move(value)) {}
+	ReturnStmt(Token keyword, Expression value, Token retType) : keyword(keyword), value(std::move(value)), retType(retType) {}
 	RuntimeValue accept(StmtVisitor& visitor) override {
 		return visitor.visitReturnStmt(*this);
 	}

@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -432,6 +433,10 @@ class BigDecimal {
             }
 
             return x.truncate(precision);
+        }
+
+        bool fitsInDecimal() const {
+            return *this < std::numeric_limits<double>::max() && *this > std::numeric_limits<double>::min();
         }
 
         double toDecimal() const {
