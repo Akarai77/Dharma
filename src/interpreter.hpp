@@ -52,39 +52,6 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             return -1;
         }
 
-        LiteralValue promoteType(const LiteralValue& operand,std::string targetType,const Token& token,RuntimeError err) {
-            const auto& [value,currentType] = operand;
-
-            if(currentType == targetType) return operand;
-            if(currentType == "nil"){
-                std::cout<<ImplicitConversionWarning(token,targetType,currentType).message();
-                if(targetType == "integer") return {Integer(0),targetType};
-                if(targetType == "decimal") return {static_cast<double>(0),targetType};
-                if(targetType == "BigDecimal") return {BigDecimal(0),targetType};
-                if(targetType == "boolean") return {false,"boolean"};
-            }
-            if(currentType == "boolean"){
-                std::cout<<ImplicitConversionWarning(token,targetType,currentType).message();
-                bool val = std::get<bool>(value);
-                if(targetType == "integer") return {Integer(val),"integer"};
-                if(targetType == "decimal") return {static_cast<double>(val),"decimal"};
-                if(targetType == "BigDecimal") return {BigDecimal(val),"BigDecimal"};
-            }
-            if(currentType == "integer"){
-                std::cout<<ImplicitConversionWarning(token,targetType,currentType).message();
-                Integer val = std::get<Integer>(value);
-                if(targetType == "decimal") return {val.toDecimal(),"decimal"};
-                if(targetType == "BigDecimal") return {val.toBigDecimal(),"BigDecimal"};
-            }
-            if(currentType == "decimal"){
-                std::cout<<ImplicitConversionWarning(token,targetType,currentType).message();
-                double val = std::get<double>(value);
-                if(targetType == "BigDecimal") return {BigDecimal(val),"BigDecimal"};
-            }
-            
-            throw err;
-        }
-
         std::string stringify(RuntimeValue result) const {
 
             if(std::holds_alternative<CallAble>(result)) {
@@ -204,8 +171,8 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
            LiteralValue right = getLiteralValue(evaluate(expr.right));
 
            std::string targetType = getPriority(left.second) > getPriority(right.second) ? left.second : right.second;
-           auto [leftval,leftType] = promoteType(left,targetType,expr.Operator,RuntimeError(expr.Operator,"Operands are of incompatible types!"));
-           auto [rightval,rightType] = promoteType(right,targetType,expr.Operator,RuntimeError(expr.Operator,"Operands are of incompatible types!"));
+           auto [leftval,leftType] = promoteType(left,targetType,expr.Operator,"Operands are of incompatible types!");
+           auto [rightval,rightType] = promoteType(right,targetType,expr.Operator,"Operands are of incompatible types!");
            switch(expr.Operator.type){
                
                case TokenType::GREATER:
@@ -436,8 +403,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         RuntimeValue visitReturnStmt(ReturnStmt& statement) override {
             RuntimeValue value = nullptr;
             if(statement.value != nullptr) value = evaluate(statement.value);
-
-            throw Return(value);
+            throw Return(statement.keyword,value,statement.retType);
         }
 
         RuntimeValue visitBlockStmt(BlockStmt& stmt) override {
@@ -466,6 +432,37 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                 std::cerr<<err.message();
             }
         }
+
+        LiteralValue promoteType(const LiteralValue& operand,std::string targetType,const Token& token,std::string msg) {
+            const auto& [value,currentType] = operand;
+
+            if(targetType == "int") targetType = "integer";
+            if(currentType == targetType) return operand;
+            LiteralValue retValue;
+            if(currentType == "nil"){
+                if(targetType == "integer") retValue = {Integer(0),targetType};
+                if(targetType == "decimal") retValue =  {static_cast<double>(0),targetType};
+                if(targetType == "BigDecimal") retValue = {BigDecimal(0),targetType};
+                if(targetType == "boolean") retValue = {false,"boolean"};
+            } else if(currentType == "boolean"){
+                bool val = std::get<bool>(value);
+                if(targetType == "integer") retValue = {Integer(val),"integer"};
+                if(targetType == "decimal") retValue = {static_cast<double>(val),"decimal"};
+                if(targetType == "BigDecimal") retValue = {BigDecimal(val),"BigDecimal"};
+            } else if(currentType == "integer"){
+                Integer val = std::get<Integer>(value);
+                if(targetType == "decimal") retValue = {val.toDecimal(),"decimal"};
+                if(targetType == "BigDecimal") retValue = {val.toBigDecimal(),"BigDecimal"};
+            } else if(currentType == "decimal"){
+                double val = std::get<double>(value);
+                if(targetType == "BigDecimal") retValue = {BigDecimal(val),"BigDecimal"};
+                else throw RuntimeError(token,msg);
+            }
+            
+            std::cout<<ImplicitConversionWarning(token,targetType,currentType).message();
+            return retValue;
+        }
+
 
         RuntimeValue evaluate(Expression& expression){
             return expression->accept(*this);
@@ -500,7 +497,11 @@ LiteralValue Function::call(Interpreter& interpreter, const Token& name, const s
     try {
         interpreter.executeBlock(declaration.body,environment);
     } catch (Return& returnValue) {
-        return getLiteralValue(returnValue.value);
+        LiteralValue retVal = getLiteralValue(returnValue.value);
+        std::string errMsg = "Cannot convert '" + retVal.second + "' to '" +
+                             returnValue.retType->lexeme + "'.";
+        LiteralValue val = interpreter.promoteType(retVal,returnValue.retType->lexeme,returnValue.keyword,errMsg);
+        return val;
     }
     return {Nil(),"nil"};
 }

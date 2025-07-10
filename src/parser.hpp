@@ -243,9 +243,9 @@ class Parser{
             if(match({TokenType::VARIABLE})) {
                 LiteralValue lit = getLiteralData(previous().literal);
 
+                std::string actual = lit.second;
                 if (expectedType.has_value()) {
                     std::string expected = expectedType->lexeme;
-                    std::string actual = lit.second;
                     if(expected == "int") expected = "integer";
                     if(expected == "integer") previous().type = TokenType::INTEGER;
                     if(expected == "decimal")  previous().type = TokenType::DECIMAL;
@@ -262,7 +262,13 @@ class Parser{
                         return makeExpr<LiteralExpr>(LiteralValue{convertedValue, expected});
                     }
                 }
-
+                
+                if(actual == "BigDecimal") {
+                    BigDecimal val = std::get<BigDecimal>(lit.first);
+                    if(val.fitsInDecimal()){
+                        lit = {val.toDecimal(),"decimal"};
+                    }
+                }
                 return makeExpr<LiteralExpr>(lit);
             }
 
@@ -448,10 +454,14 @@ class Parser{
             }
 
             consume(TokenType::RIGHT_PAREN,"Expect ')' after parameters.");
+            Token retType = Token(TokenType::TYPE,"var",std::nullopt,previous().line,previous().column);
+            if(match({TokenType::ARROW})) {
+                retType = consume(TokenType::TYPE,"Expect return type after '->'.");
+            }
             consume(TokenType::LEFT_BRACE,"Expect '{' before "+kind+" body.");
 
-            std::vector<Statement> body = std::move(getBlockStatement());
-            return makeStmt<FunctionStmt>(name,kind,std::move(parameters),std::move(body));
+            std::vector<Statement> body = std::move(getBlockStatement(retType));
+            return makeStmt<FunctionStmt>(name,kind,std::move(parameters),std::move(body),retType);
         }
 
         Statement getVarDeclaration(Token type,bool semiColon = true){
@@ -569,44 +579,43 @@ class Parser{
 
         }
 
-        Statement getReturnStatement() {
+        Statement getReturnStatement(std::optional<Token> retType = std::nullopt) {
             Token keyword = previous();
             Expression value = nullptr;
             if(!check(TokenType::SEMICOLON)) {
                 value = getExpression();
             }
-
             consume(TokenType::SEMICOLON,"Expect ';' after return value.");
-            return makeStmt<ReturnStmt>(keyword,std::move(value));
+            return makeStmt<ReturnStmt>(keyword,std::move(value),retType.value());
         }
 
-        std::vector<Statement> getBlockStatement(){
+        std::vector<Statement> getBlockStatement(std::optional<Token> retType = std::nullopt){
             std::vector<Statement> statements;
 
             while(!isAtEnd() && !check(TokenType::RIGHT_BRACE)) {
-                statements.push_back(getDeclaration());
+                statements.push_back(getDeclaration(retType));
             }
 
             consume(TokenType::RIGHT_BRACE, "Expect '}' after block.");
             return statements;
         }
 
-        Statement getStatement(){
+        Statement getStatement(std::optional<Token> retType = std::nullopt){
             if(match({TokenType::FUN})) return getFunctionStatement("function");
             if(match({TokenType::PRINT})) return getPrintStatement();
             if(match({TokenType::IF})) return getIfStatement();
             if(match({TokenType::WHILE})) return getWhileStatement();
             if(match({TokenType::FOR})) return getForStatement();
-            if(match({TokenType::RETURN})) return getReturnStatement();
+            if(match({TokenType::RETURN})) return getReturnStatement(retType);
             if(match({TokenType::LEFT_BRACE})) return makeStmt<BlockStmt>(getBlockStatement());
 
             return getExprStatement();
         }
 
-        Statement getDeclaration(){
+        Statement getDeclaration(std::optional<Token> retType = std::nullopt){
             try{
                 if(match({TokenType::TYPE})) return getVarDeclaration(previous());
-                return getStatement();
+                return getStatement(retType);
            } catch(ParseError& error){
                 std::cerr<<error.message();
                 synchronize();

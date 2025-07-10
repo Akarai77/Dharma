@@ -5,8 +5,8 @@ BlockStmt -> std::vector<Statement> **statements
 ExprStmt -> Expression *expression
 PrintStmt -> Expression *expression
 VarStmt -> Token name,Token type, Expression *initializer
-FunctionStmt -> Token name, std::string kind, std::vector<Statement> **params, std::vector<Statement> **body
+FunctionStmt -> Token name, std::string kind, std::vector<Statement> **params, std::vector<Statement> **body,Token returnType
 IfStmt -> Expression *ifCondition, Statement *thenBranch,Expression *elifCondition,Statement *elifBranch, Statement *elseBranch
 WhileStmt -> Expression *condition, Statement *body
 ForStmt -> Statement *initializer, Expression *condition, Expression *increment, Statement *body
-ReturnStmt -> Token keyword, Expression *value
+ReturnStmt -> Token keyword, Expression *value, Token retType
