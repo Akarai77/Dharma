@@ -15,7 +15,7 @@ class Function : public Callable {
             return declaration.params.size();
         }
 
-        LiteralValue call(Interpreter& interpreter,const std::vector<LiteralValue>& args) override;
+        LiteralValue call(Interpreter& interpreter, const Token& name, const std::vector<LiteralValue>& args) override;
 
         std::string toString() const override {
             return "<fn " + declaration.name.lexeme + " >";

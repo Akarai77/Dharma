@@ -98,7 +98,8 @@ class Parser{
                 if(check(type)) return advance();
                 else {
                     Token t = Token(TokenType::SEMICOLON,";",std::nullopt,previous().line,previous().column+previous().lexeme.size());
-                    std::cout<<SemiColonWarning(t).message();
+                    if(!SEMICOLON_WARNING_SUPPRESS)
+                        std::cout<<SemiColonWarning(t).message();
                     return t;
                 }
             }
@@ -299,7 +300,8 @@ class Parser{
                         } while(match({TokenType::COMMA}));
                     }
                     Token paren = consume(TokenType::RIGHT_PAREN,"Expect ')' after arguments.");
-                    expr = makeExpr<CallExpr>(std::move(expr),paren,std::move(arguments));
+                    auto varExpr = dynamic_cast<VariableExpr*>(expr.get());
+                    expr = makeExpr<CallExpr>(varExpr->name,std::move(expr),paren,std::move(arguments));
                 } else {
                     break;
                 }
@@ -428,16 +430,20 @@ class Parser{
         Statement getFunctionStatement(std::string kind) {
             Token name = consume(TokenType::IDENTIFIER,"Expect" + kind + "name.");
             consume(TokenType::LEFT_PAREN,"Expect '(' after "+kind+" name.");
-            std::vector<Token> parameters;
+            std::vector<Statement> parameters;
             if(!check(TokenType::RIGHT_PAREN)){
                 do {
                     if(parameters.size() > 255) {
                         throw ParseError(peek(),"Cannot have more than 255 parameters.");
                     }
-
-                    parameters.push_back(
-                        consume(TokenType::IDENTIFIER,"Expect parameter name")
-                    );
+                    
+                    if(match({TokenType::TYPE})) {
+                        parameters.push_back(
+                            getVarDeclaration(previous(),false)
+                        );
+                    } else {
+                        throw ParseError(peek(),"Expect Variable Declaration.");
+                    }
                 } while (match({TokenType::COMMA}));
             }
 
@@ -445,10 +451,10 @@ class Parser{
             consume(TokenType::LEFT_BRACE,"Expect '{' before "+kind+" body.");
 
             std::vector<Statement> body = std::move(getBlockStatement());
-            return makeStmt<FunctionStmt>(name,kind,parameters,std::move(body));
+            return makeStmt<FunctionStmt>(name,kind,std::move(parameters),std::move(body));
         }
 
-        Statement getVarDeclaration(Token type){
+        Statement getVarDeclaration(Token type,bool semiColon = true){
             Token name = consume(TokenType::IDENTIFIER,"Expect Variable name");
 
             if(match({TokenType::COLON})){
@@ -471,8 +477,9 @@ class Parser{
             if(match({TokenType::EQUAL})) {
                 initializer = getExpression(std::make_optional<Token>(type));
             }
-
-            consume(TokenType::SEMICOLON,"Expect ';' after variable declaration.");
+    
+            if(semiColon)
+                consume(TokenType::SEMICOLON,"Expect ';' after variable declaration.");
             return makeStmt<VarStmt>(name,type,std::move(initializer));
         }
 

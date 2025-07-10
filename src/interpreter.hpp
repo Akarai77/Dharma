@@ -14,11 +14,14 @@
 #include "callable.hpp"
 #include "warning.hpp"
 
-#define BIN_OP(actualType, op, retType) \
-    return LiteralValue{std::get<actualType>(leftval) op std::get<actualType>(rightval), retType};
+#define BIN_OP(actualType, op, retType, retTypeStr) \
+    { \
+        retType val = std::get<actualType>(leftval) op std::get<actualType>(rightval); \
+        return LiteralValue{LiteralCore{val}, retTypeStr}; \
+    }
 
-#define TYPE_BIN_OP(type, actualType, op, retType) \
-    if(targetType == type) BIN_OP(actualType, op, retType);
+#define TYPE_BIN_OP(type, actualType, op, retType, retTypeStr) \
+    if(targetType == type) BIN_OP(actualType, op, retType, retTypeStr);
 
 class Interpreter : public ExprVisitor, public StmtVisitor{
     private:
@@ -53,25 +56,28 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             const auto& [value,currentType] = operand;
 
             if(currentType == targetType) return operand;
-            std::cout<<ImplicitConversionWarning(token,targetType,currentType).message();
             if(currentType == "nil"){
+                std::cout<<ImplicitConversionWarning(token,targetType,currentType).message();
                 if(targetType == "integer") return {Integer(0),targetType};
                 if(targetType == "decimal") return {static_cast<double>(0),targetType};
                 if(targetType == "BigDecimal") return {BigDecimal(0),targetType};
                 if(targetType == "boolean") return {false,"boolean"};
             }
             if(currentType == "boolean"){
+                std::cout<<ImplicitConversionWarning(token,targetType,currentType).message();
                 bool val = std::get<bool>(value);
                 if(targetType == "integer") return {Integer(val),"integer"};
                 if(targetType == "decimal") return {static_cast<double>(val),"decimal"};
                 if(targetType == "BigDecimal") return {BigDecimal(val),"BigDecimal"};
             }
             if(currentType == "integer"){
+                std::cout<<ImplicitConversionWarning(token,targetType,currentType).message();
                 Integer val = std::get<Integer>(value);
                 if(targetType == "decimal") return {val.toDecimal(),"decimal"};
                 if(targetType == "BigDecimal") return {val.toBigDecimal(),"BigDecimal"};
             }
             if(currentType == "decimal"){
+                std::cout<<ImplicitConversionWarning(token,targetType,currentType).message();
                 double val = std::get<double>(value);
                 if(targetType == "BigDecimal") return {BigDecimal(val),"BigDecimal"};
             }
@@ -203,90 +209,90 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
            switch(expr.Operator.type){
                
                case TokenType::GREATER:
-                    TYPE_BIN_OP("integer",Integer,>,"boolean");
-                    TYPE_BIN_OP("decimal",double,>,"boolean");
-                    TYPE_BIN_OP("BigDecimal",BigDecimal,>,"boolean")
-                    TYPE_BIN_OP("string",std::string,>,"boolean");
-                    TYPE_BIN_OP("boolean",bool,>,"boolean");
+                    TYPE_BIN_OP("integer",Integer,>,bool,"boolean");
+                    TYPE_BIN_OP("decimal",double,>,bool,"boolean");
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,>,bool,"boolean")
+                    TYPE_BIN_OP("string",std::string,>,bool,"boolean");
+                    TYPE_BIN_OP("boolean",bool,>,bool,"boolean");
                     break;
                 case TokenType::GREATER_EQUAL:
-                    TYPE_BIN_OP("integer",Integer,>=,"boolean");
-                    TYPE_BIN_OP("decimal",double,>=,"boolean");
-                    TYPE_BIN_OP("BigDecimal",BigDecimal,>=,"boolean")
-                    TYPE_BIN_OP("string",std::string,>=,"boolean");
-                    TYPE_BIN_OP("boolean",bool,>=,"boolean");
+                    TYPE_BIN_OP("integer",Integer,>=,bool,"boolean");
+                    TYPE_BIN_OP("decimal",double,>=,bool,"boolean");
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,>=,bool,"boolean")
+                    TYPE_BIN_OP("string",std::string,>=,bool,"boolean");
+                    TYPE_BIN_OP("boolean",bool,>=,bool,"boolean");
                     break;
                 case TokenType::LESS:
-                    TYPE_BIN_OP("integer",Integer,<,"boolean");
-                    TYPE_BIN_OP("decimal",double,<,"boolean");
-                    TYPE_BIN_OP("BigDecimal",BigDecimal,<,"boolean")
-                    TYPE_BIN_OP("string",std::string,<,"boolean");
-                    TYPE_BIN_OP("boolean",bool,<,"boolean");
+                    TYPE_BIN_OP("integer",Integer,<,bool,"boolean");
+                    TYPE_BIN_OP("decimal",double,<,bool,"boolean");
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,<,bool,"boolean")
+                    TYPE_BIN_OP("string",std::string,<,bool,"boolean");
+                    TYPE_BIN_OP("boolean",bool,<,bool,"boolean");
                     break;
                 case TokenType::LESS_EQUAL:
-                    TYPE_BIN_OP("integer",Integer,<=,"boolean");
-                    TYPE_BIN_OP("decimal",double,<=,"boolean");
-                    TYPE_BIN_OP("BigDecimal",BigDecimal,<=,"boolean")
-                    TYPE_BIN_OP("string",std::string,<=,"boolean");
-                    TYPE_BIN_OP("boolean",bool,<=,"boolean");
+                    TYPE_BIN_OP("integer",Integer,<=,bool,"boolean");
+                    TYPE_BIN_OP("decimal",double,<=,bool,"boolean");
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,<=,bool,"boolean")
+                    TYPE_BIN_OP("string",std::string,<=,bool,"boolean");
+                    TYPE_BIN_OP("boolean",bool,<=,bool,"boolean");
                     break;
                case TokenType::BANG_EQUAL:
-                    TYPE_BIN_OP("integer",Integer,!=,"boolean");
-                    TYPE_BIN_OP("decimal",double,!=,"boolean");
-                    TYPE_BIN_OP("BigDecimal",BigDecimal,!=,"boolean")
-                    TYPE_BIN_OP("string",std::string,!=,"boolean");
-                    TYPE_BIN_OP("boolean",bool,!=,"boolean");
+                    TYPE_BIN_OP("integer",Integer,!=,bool,"boolean");
+                    TYPE_BIN_OP("decimal",double,!=,bool,"boolean");
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,!=,bool,"boolean")
+                    TYPE_BIN_OP("string",std::string,!=,bool,"boolean");
+                    TYPE_BIN_OP("boolean",bool,!=,bool,"boolean");
                     break;
                case TokenType::EQUAL_EQUAL:
-                    TYPE_BIN_OP("integer",Integer,==,"boolean");
-                    TYPE_BIN_OP("decimal",double,==,"boolean");
-                    TYPE_BIN_OP("BigDecimal",BigDecimal,==,"boolean")
-                    TYPE_BIN_OP("string",std::string,==,"boolean");
-                    TYPE_BIN_OP("boolean",bool,==,"boolean");
+                    TYPE_BIN_OP("integer",Integer,==,bool,"boolean");
+                    TYPE_BIN_OP("decimal",double,==,bool,"boolean");
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,==,bool,"boolean")
+                    TYPE_BIN_OP("string",std::string,==,bool,"boolean");
+                    TYPE_BIN_OP("boolean",bool,==,bool,"boolean");
                     break;
                case TokenType::PLUS:
-                    TYPE_BIN_OP("integer",Integer,+,"integer");
-                    TYPE_BIN_OP("decimal",double,+,"decimal");
-                    TYPE_BIN_OP("BigDecimal",BigDecimal,+,"BigDecimal")
-                    TYPE_BIN_OP("boolean",Integer,+,"integer");
-                    TYPE_BIN_OP("string",std::string,+,"string");
+                    TYPE_BIN_OP("integer",Integer,+,Integer,"integer");
+                    TYPE_BIN_OP("decimal",double,+,double,"decimal");
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,+,BigDecimal,"BigDecimal")
+                    TYPE_BIN_OP("boolean",bool,+,Integer,"integer");
+                    TYPE_BIN_OP("string",std::string,+,std::string,"string");
                     break;
                case TokenType::MINUS:
-                    TYPE_BIN_OP("integer",Integer,-,"integer");
-                    TYPE_BIN_OP("decimal",double,-,"decimal");
-                    TYPE_BIN_OP("BigDecimal",BigDecimal,-,"BigDecimal")
-                    TYPE_BIN_OP("boolean",Integer,-,"integer");
+                    TYPE_BIN_OP("integer",Integer,-,Integer,"integer");
+                    TYPE_BIN_OP("decimal",double,-,double,"decimal");
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,-,BigDecimal,"BigDecimal")
+                    TYPE_BIN_OP("boolean",Integer,-,Integer,"integer");
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
                case TokenType::STAR:
-                    TYPE_BIN_OP("integer",Integer,*,"integer");
-                    TYPE_BIN_OP("decimal",double,*,"decimal");
-                    TYPE_BIN_OP("BigDecimal",BigDecimal,*,"BigDecimal")
-                    TYPE_BIN_OP("boolean",Integer,*,"integer");
+                    TYPE_BIN_OP("integer",Integer,*,Integer,"integer");
+                    TYPE_BIN_OP("decimal",double,*,double,"decimal");
+                    TYPE_BIN_OP("BigDecimal",BigDecimal,*,BigDecimal,"BigDecimal")
+                    TYPE_BIN_OP("boolean",Integer,*,Integer,"integer");
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
                case TokenType::SLASH:
                     if(targetType == "integer"){
-                        if(std::get<Integer>(rightval) != 0) BIN_OP(Integer,/,"integer");
+                        if(std::get<Integer>(rightval) != 0) BIN_OP(Integer,/,Integer,"integer");
                         throw RuntimeError(expr.Operator,"Divide by zero error");
                     }
                     if(targetType == "decimal"){
-                        if(std::get<double>(rightval) != 0.0) BIN_OP(double,/,"decimal");
+                        if(std::get<double>(rightval) != 0.0) BIN_OP(double,/,double,"decimal");
                         throw RuntimeError(expr.Operator,"Divide by zero error");
                     }
                     if(targetType == "BigDecimal"){
-                        if(std::get<BigDecimal>(rightval) != 0) BIN_OP(BigDecimal,/,"BigDecimal");
+                        if(std::get<BigDecimal>(rightval) != 0) BIN_OP(BigDecimal,/,BigDecimal,"BigDecimal");
                         throw RuntimeError(expr.Operator,"Divide by zero error");
                     }
                     if(targetType == "boolean"){
-                        if(std::get<bool>(rightval) != false) BIN_OP(Integer,/,"integer");
+                        if(std::get<bool>(rightval) != false) BIN_OP(Integer,/,Integer,"integer");
                         throw RuntimeError(expr.Operator,"Divide by zero error ('false' evaluates to '0')");
                     }
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
                case TokenType::PERCENT:
                     if(targetType == "integer"){
-                        if(std::get<Integer>(rightval) != 0) BIN_OP(Integer,%,"integer");
+                        if(std::get<Integer>(rightval) != 0) BIN_OP(Integer,%,Integer,"integer");
                         throw RuntimeError(expr.Operator,"Modulo by zero error");
                     }
                     if(targetType == "decimal"){
@@ -295,11 +301,11 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                         throw RuntimeError(expr.Operator,"Modulo by zero error");
                     }
                     if(targetType == "BigDecimal"){
-                        if(std::get<BigDecimal>(rightval) != 0) BIN_OP(BigDecimal,%,"BigDecimal");
+                        if(std::get<BigDecimal>(rightval) != 0) BIN_OP(BigDecimal,%,BigDecimal,"BigDecimal");
                         throw RuntimeError(expr.Operator,"Modulo by zero error");
                     }
                     if(targetType == "boolean"){
-                        if(std::get<bool>(rightval) != false) BIN_OP(Integer,%,"integer");
+                        if(std::get<bool>(rightval) != false) BIN_OP(Integer,%,Integer,"integer");
                         throw RuntimeError(expr.Operator,"Modulo by zero error ('false' evaluates to '0')");
                     }
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
@@ -322,7 +328,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                 if(arity != arguments.size()) {
                     throw RuntimeError(expr.paren,"Expected "+std::to_string(arity)+" arguments but got "+std::to_string(arguments.size())+".");
                 }
-                return (*function)->call(*this, arguments);
+                return (*function)->call(*this, expr.name, arguments);
             } else {
                 throw RuntimeError(expr.paren,"Can only call functions and classes.");
             }
@@ -479,11 +485,16 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
 };
 
-LiteralValue Function::call(Interpreter& interpreter,const std::vector<LiteralValue>& args) {
+LiteralValue Function::call(Interpreter& interpreter, const Token& name, const std::vector<LiteralValue>& args) {
     Environment* environment = new Environment(interpreter.globals);
 
     for(int i = 0;i<declaration.params.size();i++){
-        environment->define(declaration.params[i].lexeme,args[i],args[i].second);
+        auto varExpr = dynamic_cast<VarStmt*>(declaration.params[i].get());
+        std::string varType = varExpr->type.lexeme;
+        if(varType == "int") varType = "integer";
+        if(varType != args[i].second && varType != "var")
+            throw RuntimeError(name,"No matching function call.");
+        environment->define(varExpr->name.lexeme,args[i],args[i].second);
     }
 
     try {

@@ -66,11 +66,12 @@ public:
 
 class CallExpr : public Expr {
 public:
+	Token name;
 	Expression callee;
 	Token paren;
 	std::vector<Expression> arguments;
 
-	CallExpr(Expression callee, Token paren, std::vector<Expression> arguments) : callee(std::move(callee)), paren(paren), arguments(std::move(arguments)) {}
+	CallExpr(Token name, Expression callee, Token paren, std::vector<Expression> arguments) : name(name), callee(std::move(callee)), paren(paren), arguments(std::move(arguments)) {}
 	RuntimeValue accept(ExprVisitor& visitor) override {
 		return visitor.visitCallExpr(*this);
 	}

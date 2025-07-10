@@ -87,10 +87,10 @@ class FunctionStmt : public Stmt {
 public:
 	Token name;
 	std::string kind;
-	std::vector<Token> params;
+	std::vector<Statement> params;
 	std::vector<Statement> body;
 
-	FunctionStmt(Token name, std::string kind, std::vector<Token> params, std::vector<Statement>&& body) : name(name), kind(kind), params(params), body(std::move(body)) {}
+	FunctionStmt(Token name, std::string kind, std::vector<Statement>&& params, std::vector<Statement>&& body) : name(name), kind(kind), params(std::move(params)), body(std::move(body)) {}
 	RuntimeValue accept(StmtVisitor& visitor) override {
 		return visitor.visitFunctionStmt(*this);
 	}
