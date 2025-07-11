@@ -21,7 +21,7 @@
     }
 
 #define TYPE_BIN_OP(type, actualType, op, retType, retTypeStr) \
-    if(targetType == type) BIN_OP(actualType, op, retType, retTypeStr);
+    if(targetType == type) BIN_OP(actualType, op, retType, retTypeStr); \
 
 class Interpreter : public ExprVisitor, public StmtVisitor{
     private:
@@ -221,21 +221,36 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                     TYPE_BIN_OP("integer",Integer,+,Integer,"integer");
                     TYPE_BIN_OP("decimal",double,+,double,"decimal");
                     TYPE_BIN_OP("BigDecimal",BigDecimal,+,BigDecimal,"BigDecimal")
-                    TYPE_BIN_OP("boolean",bool,+,Integer,"integer");
+                    {
+                        if(targetType == "boolean"){
+                            std::cout<<ImplicitConversionWarning(expr.Operator,"integer","boolean").message();
+                            BIN_OP(bool,+,Integer,"integer");
+                        }
+                    }
                     TYPE_BIN_OP("string",std::string,+,std::string,"string");
                     break;
                case TokenType::MINUS:
                     TYPE_BIN_OP("integer",Integer,-,Integer,"integer");
                     TYPE_BIN_OP("decimal",double,-,double,"decimal");
                     TYPE_BIN_OP("BigDecimal",BigDecimal,-,BigDecimal,"BigDecimal")
-                    TYPE_BIN_OP("boolean",Integer,-,Integer,"integer");
+                    {
+                        if(targetType == "boolean"){
+                            std::cout<<ImplicitConversionWarning(expr.Operator,"integer","boolean").message();
+                            BIN_OP(bool,-,Integer,"integer");
+                        }
+                    }
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
                case TokenType::STAR:
                     TYPE_BIN_OP("integer",Integer,*,Integer,"integer");
                     TYPE_BIN_OP("decimal",double,*,double,"decimal");
                     TYPE_BIN_OP("BigDecimal",BigDecimal,*,BigDecimal,"BigDecimal")
-                    TYPE_BIN_OP("boolean",Integer,*,Integer,"integer");
+                    {
+                        if(targetType == "boolean"){
+                            std::cout<<ImplicitConversionWarning(expr.Operator,"integer","boolean").message();
+                            BIN_OP(bool,*,Integer,"integer");
+                        }
+                    }
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
                     break;
                case TokenType::SLASH:
@@ -253,6 +268,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                     }
                     if(targetType == "boolean"){
                         if(std::get<bool>(rightval) != false) BIN_OP(Integer,/,Integer,"integer");
+                        std::cout<<ImplicitConversionWarning(expr.Operator,"boolean","integer").message();
                         throw RuntimeError(expr.Operator,"Divide by zero error ('false' evaluates to '0')");
                     }
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
@@ -273,6 +289,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                     }
                     if(targetType == "boolean"){
                         if(std::get<bool>(rightval) != false) BIN_OP(Integer,%,Integer,"integer");
+                        std::cout<<ImplicitConversionWarning(expr.Operator,"integer","boolean").message();
                         throw RuntimeError(expr.Operator,"Modulo by zero error ('false' evaluates to '0')");
                     }
                     if(targetType == "string") throw RuntimeError(expr.Operator,"Unsupported operand type for 'string' and 'string'.");
@@ -438,7 +455,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
             if(targetType == "int") targetType = "integer";
             if(currentType == targetType) return operand;
-            LiteralValue retValue;
+            LiteralValue retValue = {Nil(),"nil"};
             if(currentType == "nil"){
                 if(targetType == "integer") retValue = {Integer(0),targetType};
                 if(targetType == "decimal") retValue =  {static_cast<double>(0),targetType};
@@ -456,7 +473,9 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             } else if(currentType == "decimal"){
                 double val = std::get<double>(value);
                 if(targetType == "BigDecimal") retValue = {BigDecimal(val),"BigDecimal"};
-                else throw RuntimeError(token,msg);
+            } 
+            if(retValue.second == "nil"){
+                throw RuntimeError(token,msg);
             }
             
             std::cout<<ImplicitConversionWarning(token,targetType,currentType).message();
@@ -498,9 +517,10 @@ LiteralValue Function::call(Interpreter& interpreter, const Token& name, const s
         interpreter.executeBlock(declaration.body,environment);
     } catch (Return& returnValue) {
         LiteralValue retVal = getLiteralValue(returnValue.value);
-        std::string errMsg = "Cannot convert '" + retVal.second + "' to '" +
-                             returnValue.retType->lexeme + "'.";
-        LiteralValue val = interpreter.promoteType(retVal,returnValue.retType->lexeme,returnValue.keyword,errMsg);
+        std::string retType = returnValue.retType->lexeme;
+        if(retType == "var") retType = retVal.second;
+        std::string errMsg = "Cannot convert '" + retVal.second + "' to '" + retType + "'.";
+            LiteralValue val = interpreter.promoteType(retVal,retType,returnValue.keyword,errMsg);
         return val;
     }
     return {Nil(),"nil"};

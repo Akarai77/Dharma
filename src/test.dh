@@ -1,7 +1,6 @@
-fun add(var a,var b) -> int{
+fun add(var a,var b) -> string {
     return a + b;
 }
 
-print add(1,2)
-print add(100,1983918.1331)
-print add(true,true)
+print add("ass","tits")
+print add(true,false)
