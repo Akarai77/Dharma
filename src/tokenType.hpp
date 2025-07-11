@@ -53,6 +53,7 @@ enum class TokenType {
     INVOKE,              // interpret another file
     YIELD,               // for coroutines / generators
     SUTRA,               // possibly to define internal script blocks
+    ERROR,
 
     // Meta / structural tokens
     COMMENT,

@@ -8,6 +8,7 @@
 #include "environment.hpp"
 #include <cmath>
 #include <memory>
+#include <optional>
 #include <utility>
 #include "error.hpp"
 #include "util.hpp"
@@ -69,7 +70,9 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             } else if(lit.second == "BigDecimal") {
                 return (std::get<BigDecimal>(lit.first)).toString();
             } else if (lit.second == "string") {
-                return "'"+std::get<std::string>(lit.first)+"'";
+                return "'" + std::get<std::string>(lit.first) + "'";
+            } else if(lit.second == "type") {
+                return "<" + std::get<std::string>(lit.first) + ">";
             } else {
                 return "nil";
             }
@@ -312,7 +315,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                 if(arity != arguments.size()) {
                     throw RuntimeError(expr.paren,"Expected "+std::to_string(arity)+" arguments but got "+std::to_string(arguments.size())+".");
                 }
-                return (*function)->call(*this, expr.name, arguments);
+                return (*function)->call(*this, expr.tokens, arguments);
             } else {
                 throw RuntimeError(expr.paren,"Can only call functions and classes.");
             }
@@ -501,15 +504,14 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
 };
 
-LiteralValue Function::call(Interpreter& interpreter, const Token& name, const std::vector<LiteralValue>& args) {
+LiteralValue Function::call(Interpreter& interpreter, const std::vector<Token>& tokens, const std::vector<LiteralValue>& args) {
     Environment* environment = new Environment(interpreter.globals);
 
     for(int i = 0;i<declaration.params.size();i++){
         auto varExpr = dynamic_cast<VarStmt*>(declaration.params[i].get());
         std::string varType = varExpr->type.lexeme;
-        if(varType == "int") varType = "integer";
         if(varType != args[i].second && varType != "var")
-            throw RuntimeError(name,"No matching function call.");
+            throw RuntimeError(tokens[0],"No matching function call.");
         environment->define(varExpr->name.lexeme,args[i],args[i].second);
     }
 
@@ -524,4 +526,14 @@ LiteralValue Function::call(Interpreter& interpreter, const Token& name, const s
         return val;
     }
     return {Nil(),"nil"};
+}
+
+LiteralValue TypeOfFunction::call(Interpreter& interpreter, const std::vector<Token>& tokens, const std::vector<LiteralValue>& args) {
+    if(tokens.size() == 2) {
+        std::string type = interpreter.environment->getType(tokens[1]);
+        if(type == "variable")
+            type += " " + args[0].second;
+        return {type,"type"};
+    }
+    return {args[0].second,"type"};
 }

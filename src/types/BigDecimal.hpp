@@ -435,8 +435,15 @@ class BigDecimal {
             return x.truncate(precision);
         }
 
-        bool fitsInDecimal() const {
-            return *this < std::numeric_limits<double>::max() && *this > std::numeric_limits<double>::min();
+        bool fitsInDecimal() {
+            std::string str = toString();
+            str.erase(std::remove(str.begin(), str.end(), '.'), str.end());
+            size_t first_nonzero = str.find_first_not_of('0');
+            if (first_nonzero == std::string::npos) {
+                return true;
+            }
+            std::string digits_only = str.substr(first_nonzero);
+            return digits_only.length() <= 15;
         }
 
         double toDecimal() const {

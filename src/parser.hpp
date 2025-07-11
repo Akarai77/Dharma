@@ -186,7 +186,7 @@ class Parser{
             if(match({TokenType::TRUE})) {
                 std::string actualType = "boolean";
 
-                if (expectedType.has_value()) {
+                if (expectedType.has_value() && expectedType->lexeme != "var") {
                     std::string expected = expectedType->lexeme;
 
                     if (actualType != expected) {
@@ -205,7 +205,7 @@ class Parser{
             if(match({TokenType::FALSE})) {
                 std::string actualType = "boolean";
 
-                if (expectedType.has_value()) {
+                if (expectedType.has_value() && expectedType->lexeme != "var") {
                     std::string expected = expectedType->lexeme;
 
                     if (actualType != expected) {
@@ -224,7 +224,7 @@ class Parser{
             if(match({TokenType::NIL})) {
                 std::string actualType = "nil";
 
-                if (expectedType.has_value()) {
+                if (expectedType.has_value() && expectedType->lexeme != "var") {
                     std::string expected = expectedType->lexeme;
 
                     if (actualType != expected) {
@@ -244,7 +244,7 @@ class Parser{
                 LiteralValue lit = getLiteralData(previous().literal);
 
                 std::string actual = lit.second;
-                if (expectedType.has_value()) {
+                if (expectedType.has_value() && expectedType->lexeme != "var") {
                     std::string expected = expectedType->lexeme;
                     if(expected == "int") expected = "integer";
                     if(expected == "integer") previous().type = TokenType::INTEGER;
@@ -281,12 +281,13 @@ class Parser{
                 consume(TokenType::RIGHT_PAREN,"Expected ')' after expression.");
                 return makeExpr<GroupingExpr>(std::move(expr));
             }
-
+            
             throw ParseError(peek(),"Expect Expression");
         }
 
         Expression getCall(std::optional<Token> type = std::nullopt) {
             Expression expr = getPrimary(type);
+            std::vector<Token> tokens;
 
             if (match({TokenType::PLUS_PLUS,TokenType::MINUS_MINUS})) {
                 Token Operator = previous();
@@ -305,9 +306,18 @@ class Parser{
                             arguments.push_back(getExpression());
                         } while(match({TokenType::COMMA}));
                     }
-                    Token paren = consume(TokenType::RIGHT_PAREN,"Expect ')' after arguments.");
+                    
                     auto varExpr = dynamic_cast<VariableExpr*>(expr.get());
-                    expr = makeExpr<CallExpr>(varExpr->name,std::move(expr),paren,std::move(arguments));
+                    tokens.push_back(varExpr->name);
+
+                    for(auto& expr : arguments) {
+                        if(auto varExpr = dynamic_cast<VariableExpr*>(expr.get())) {
+                            tokens.push_back(varExpr->name);
+                        }
+                    }
+
+                    Token paren = consume(TokenType::RIGHT_PAREN,"Expect ')' after arguments.");
+                    expr = makeExpr<CallExpr>(tokens,std::move(expr),paren,std::move(arguments));
                 } else {
                     break;
                 }

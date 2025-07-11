@@ -1,6 +1,6 @@
-fun add(var a,var b) -> string {
-    return a + b;
+fun ass(int a,int a) -> string {
+    print a;
 }
-
-print add("ass","tits")
-print add(true,false)
+print typeOf(ass)
+print typeOf(a)
+print a

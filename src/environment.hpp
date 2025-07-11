@@ -17,6 +17,8 @@ class Environment{
         Environment(Environment* enclosing) : enclosing(enclosing) {}
 
         void define(std::string name,RuntimeValue value,std::string type){
+            if(type == "var") type = "variable";
+            else if(type == "int") type = "integer";
             values[name] = {value,type};
         }
 
@@ -30,10 +32,20 @@ class Environment{
             throw RuntimeError(name, "Undefined Variable '" + name.lexeme +"'.");
         }
 
+        std::string getType(Token name){
+            if(values.contains(name.lexeme)){
+                return values.at(name.lexeme).second;
+            }
+
+            if(enclosing != nullptr) return enclosing->getType(name);
+
+            throw RuntimeError(name, "Undefined Variable '" + name.lexeme +"'.");
+        }
+
         void assign(Token name,LiteralValue value){
             if(values.contains(name.lexeme)){
                 std::string type = values[name.lexeme].second;
-                if(type == value.second || type == "var"){
+                if(type == value.second || type == "variable"){
                     values[name.lexeme].first = value;
                     return;
                 }

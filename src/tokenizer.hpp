@@ -88,20 +88,23 @@ class Tokenizer{
             return true;
         }
 
-        void getString(char quote){
-            while(!isAtEnd() && peek() != quote){
-                if(peek() == '\n') line++;
+        void getString(char quote) {
+            int quoteLine = line;
+            int quoteColumn = current - lineStart;
+
+            while (!isAtEnd() && peek() != quote) {
+                if (peek() == '\n') line++;
                 advance();
             }
 
-            if(isAtEnd()){
-                throw SyntaxError(line,current-lineStart,"Unterminated String! String should be terminated before EOL/EOF.");
+            if (isAtEnd()) {
+                throw SyntaxError(quoteLine,quoteColumn,"Unterminated string literal.");
             }
 
             advance();
 
-            std::string str = source.substr(start+1,current-start-2);
-            addToken(TokenType::VARIABLE,str);
+            std::string str = source.substr(start + 1, current - start - 2);
+            addToken(TokenType::VARIABLE, str);
         }
 
         void getNumber(){
@@ -220,6 +223,7 @@ class Tokenizer{
                 }
             } catch(SyntaxError& err) {
                 std::cerr<<err.message();
+                exit(EXIT_FAILURE);
             }
 
             tokens.push_back(Token(TokenType::EOF_TOKEN,"",std::nullopt,line,current-lineStart));
