@@ -433,7 +433,7 @@ class Parser{
                     return makeExpr<AssignExpr>(name,Operator,std::move(value));
                 }
 
-                throw ParseError(Operator, "Assignment Target cant be a '"+getTypeOfExpression(std::move(expr))+"'.");
+                throw ParseError(Operator, "Assignment Target cant be a '"+getTypeOfExpression(expr)+"'.");
             }
 
             return expr;

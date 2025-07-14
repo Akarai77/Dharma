@@ -7,6 +7,7 @@
 #include <string>
 #include <filesystem>
 #include <vector>
+#include "resolver.hpp"
 #include "sourceManager.hpp"
 #include "parser.hpp"
 #include "stmt.hpp"
@@ -20,6 +21,8 @@ void run(const std::string& script){
     Parser parser(tokens);
     std::vector<Statement> statements = parser.parse();
     Interpreter interpreter;
+    Resolver resolver(interpreter);
+    resolver.resolve(statements);
     interpreter.interpret(statements);
 }
 

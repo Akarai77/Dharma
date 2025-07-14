@@ -1,4 +1,5 @@
 #pragma once
+
 #include "sourceManager.hpp"
 #include "token.hpp"
 #include <exception>

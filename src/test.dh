@@ -1,6 +1,10 @@
-fun ass(int a,int a) -> string {
-    print a;
+var a = "global"
+{
+    fun showA() {
+        print a;
+    }
+
+    showA();
+    var a = "block"
+    showA()
 }
-print typeOf(ass)
-print typeOf(a)
-print a

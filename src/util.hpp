@@ -23,6 +23,8 @@ using LiteralType = std::optional<LiteralCore>;
 using LiteralValue = std::pair<LiteralCore,std::string>;
 using RuntimeValue = std::variant<LiteralValue,CallAble,std::nullptr_t>;
 
+#define _NIL LiteralValue{Nil(),"nil"}
+
 LiteralValue getLiteralData(const LiteralType& expr) {
     LiteralValue result;
 
@@ -52,7 +54,7 @@ LiteralValue getLiteralValue(const RuntimeValue& val) {
     if(std::holds_alternative<LiteralValue>(val))
         return std::get<LiteralValue>(val);
     else 
-        return LiteralValue{Nil(),"nil"};
+        return _NIL;
 }
 
 bool isNil(const LiteralCore& val) {

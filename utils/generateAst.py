@@ -72,7 +72,7 @@ def getSubClasses():
     return subClasses
 
 def getFunctions():
-    functions = f"\nstd::string getTypeOfExpression({baseClassPointer} {baseClassName.lower()}) {{\n"
+    functions = f"\nstd::string getTypeOfExpression(const {baseClassPointer}& {baseClassName.lower()}) {{\n"
     for i in range(len(subClassNames)):
         if i == 0:
             functions += "\tif "

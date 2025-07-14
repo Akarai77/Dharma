@@ -22,6 +22,15 @@ class Environment{
             values[name] = {value,type};
         }
 
+        Environment* ancestor(int distance) {
+            Environment* environment = this;
+            for(int i=0;i<distance;i++){
+                environment = environment->enclosing;
+            }
+
+            return environment;
+        }
+
         RuntimeValue get(Token name){
             if(values.contains(name.lexeme)){
                 return values.at(name.lexeme).first;
@@ -32,6 +41,10 @@ class Environment{
             throw RuntimeError(name, "Undefined Variable '" + name.lexeme +"'.");
         }
 
+        RuntimeValue getAt(int distance,std::string name) {
+            return ancestor(distance)->values.at(name).first;
+        }
+
         std::string getType(Token name){
             if(values.contains(name.lexeme)){
                 return values.at(name.lexeme).second;
@@ -40,6 +53,10 @@ class Environment{
             if(enclosing != nullptr) return enclosing->getType(name);
 
             throw RuntimeError(name, "Undefined Variable '" + name.lexeme +"'.");
+        }
+
+        void assignAt(int distance,Token name,LiteralValue value) {
+            ancestor(distance)->values[name.lexeme].first = value;
         }
 
         void assign(Token name,LiteralValue value){

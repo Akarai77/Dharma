@@ -26,6 +26,7 @@
 
 class Interpreter : public ExprVisitor, public StmtVisitor{
     private:
+        std::unordered_map<Expr*, int> locals;
 
         bool isTruthy(LiteralValue literal) const {
             if(literal.second == "nil") return false;
@@ -75,6 +76,14 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                 return "<" + std::get<std::string>(lit.first) + ">";
             } else {
                 return "nil";
+            }
+        }
+
+        RuntimeValue lookUpVariable(Token name,Expr* expr) {
+            if(locals.contains(expr)) {
+                return environment->getAt(locals[expr],name.lexeme);
+            } else {
+                return globals->get(name);
             }
         }
 
@@ -162,11 +171,11 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
             }
 
-            return LiteralValue{Nil(),"nil"};
+            return _NIL;
         }
 
         RuntimeValue visitVariableExpr(VariableExpr& expr) override {
-            return environment->get(expr.name);
+            return lookUpVariable(expr.name,&expr);
         }
 
         RuntimeValue visitBinaryExpr(BinaryExpr& expr) override {
@@ -299,7 +308,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                     break;
           }
 
-           return LiteralValue{Nil(),"nil"};
+           return _NIL;
         }
 
         RuntimeValue visitCallExpr(CallExpr& expr) override {
@@ -320,7 +329,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                 throw RuntimeError(expr.paren,"Can only call functions and classes.");
             }
             
-            return LiteralValue{Nil(),"nil"};
+            return _NIL;
         }
 
         RuntimeValue visitLogicalExpr(LogicalExpr& expr) override {
@@ -350,35 +359,41 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
         RuntimeValue visitAssignExpr(AssignExpr& expr) override {
             LiteralValue value = getLiteralValue(evaluate(expr.value));
-            environment->assign(expr.name,value);
+
+            if(locals.contains(&expr)) {
+                environment->assignAt(locals[&expr],expr.name,value);
+            } else {
+                globals->assign(expr.name,value);
+            }
+
             return value;
         }
 
         RuntimeValue visitPrintStmt(PrintStmt& statement) override {
             RuntimeValue value = evaluate(statement.expression);
             std::cout<<stringify(value)<<std::endl;
-            return LiteralValue{Nil(),"nil"};
+            return _NIL;
         }
 
         RuntimeValue visitExprStmt(ExprStmt& statement) override{
             evaluate(statement.expression);
-            return LiteralValue{Nil(),"nil"};
+            return _NIL;
         }
 
         RuntimeValue visitVarStmt(VarStmt& statement) override {
-            RuntimeValue value = LiteralValue{Nil(),"nil"};
+            RuntimeValue value = _NIL;
             if(statement.initializer != nullptr){
                 value = evaluate(statement.initializer);
             }
             
             environment->define(statement.name.lexeme,value,statement.type.lexeme);
-            return LiteralValue{Nil(),"nil"};
+            return _NIL;
         }
 
         RuntimeValue visitFunctionStmt(FunctionStmt& statement) override {
             Function function(statement);
             environment->define(statement.name.lexeme,makeCallable<Function>(function),statement.kind);
-            return LiteralValue{Nil(),"nil"};
+            return _NIL;
         }
 
         RuntimeValue visitIfStmt(IfStmt& statement) override {
@@ -389,7 +404,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             } else if(statement.elseBranch != nullptr){
                 execute(statement.elseBranch);
             }
-            return LiteralValue{Nil(),"nil"};
+            return _NIL;
         }
 
         RuntimeValue visitWhileStmt(WhileStmt& statement) override {
@@ -397,7 +412,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                 execute(statement.body);
             }
 
-            return LiteralValue{Nil(),"nil"};
+            return _NIL;
         }
 
         RuntimeValue visitForStmt(ForStmt& statement) override {
@@ -417,7 +432,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                 }
             }
 
-            return LiteralValue{Nil(), "nil"};
+            return _NIL;
         }
 
         RuntimeValue visitReturnStmt(ReturnStmt& statement) override {
@@ -429,10 +444,11 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         RuntimeValue visitBlockStmt(BlockStmt& stmt) override {
             Environment* newEnvironment = new Environment(environment);
             executeBlock(stmt.statements, newEnvironment);
-            return LiteralValue{Nil(),"nil"};
+            return _NIL;
         }
 
     public:
+
         Environment* globals = new Environment();
         Environment* environment = new Environment();
 
@@ -451,6 +467,10 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             } catch(RuntimeError& err){
                 std::cerr<<err.message();
             }
+        }
+
+        void resolve(Expr* expr, int depth) {
+            locals[expr] = depth;
         }
 
         LiteralValue promoteType(const LiteralValue& operand,std::string targetType,const Token& token,std::string msg) {
@@ -530,6 +550,7 @@ LiteralValue Function::call(Interpreter& interpreter, const std::vector<Token>& 
 
 LiteralValue TypeOfFunction::call(Interpreter& interpreter, const std::vector<Token>& tokens, const std::vector<LiteralValue>& args) {
     if(tokens.size() == 2) {
+        
         std::string type = interpreter.environment->getType(tokens[1]);
         if(type == "variable")
             type += " " + args[0].second;

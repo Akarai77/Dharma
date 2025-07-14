@@ -130,7 +130,7 @@ public:
 	}
 };
 
-std::string getTypeOfExpression(Expression expr) {
+std::string getTypeOfExpression(const Expression& expr) {
 	if (auto assignexpr = dynamic_cast<AssignExpr*>(expr.get())) {
 		return "Assign Expression";
 	} else if (auto binaryexpr = dynamic_cast<BinaryExpr*>(expr.get())) {
