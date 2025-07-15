@@ -1,6 +1,7 @@
 /*
 program         -> declaration* EOF ;
-declaration     -> funcDecl
+declaration     -> classDecl
+                |  funcDecl
                 |  varDecl
                 |  statement ;
 statement       -> exprStmt
@@ -10,7 +11,8 @@ statement       -> exprStmt
                 |  printStmt
                 |  returnStmt
                 |  block ;
-funcDecl        -> "fun" IDENTIFIER "(" (IDENTIFIER ("," IDENTIFIER)*)? ")" block;
+classDecl       -> "class" IDENTIFER "{" function* "}" ;
+funcDecl        -> "fun" function ;
 varDecl         -> ("var"|"int"|"boolean"|"decimal"|"BigDecimal"|"string") IDENTIFIER (":" (int"|"decimal"|"BigDecimal"|string"|"boolean"))? ( "=" expression )? ";";
 exprStmt        -> expression ";" ;
 ifStmt          -> "if" "(" expression ")" statement
@@ -37,6 +39,10 @@ call            -> primary ("++"|"--")?  ( "(" arguments? ")")* ;
 arguments       -> expression ("," expression) * ;
 primary         -> VARIABLE | "true" | "false" | "nil"
                 |  "(" expression ")" ;
+
+
+function        -> IDENTIFIER "(" parameters? ")" block;
+parameters      -> (IDENTIFIER ("," IDENTIFIER)*) ;
 */
 
 #pragma once
@@ -462,7 +468,6 @@ class Parser{
                 retType = consume(TokenType::TYPE,"Expect return type after '->'.");
             }
             consume(TokenType::LEFT_BRACE,"Expect '{' before "+kind+" body.");
-
             std::vector<Statement> body = std::move(getBlockStatement(retType));
             return makeStmt<FunctionStmt>(name,kind,std::move(parameters),std::move(body),retType);
         }
@@ -508,24 +513,24 @@ class Parser{
             return makeStmt<ExprStmt>(std::move(expression));
         }
 
-        Statement getIfStatement(){
+        Statement getIfStatement(std::optional<Token> retType = std::nullopt){
             consume(TokenType::LEFT_PAREN,"Expect '(' after if");
             Expression ifCondition = getExpression();
             consume(TokenType::RIGHT_PAREN,"Expect ')' after condition");
 
-            Statement thenBranch = getStatement();
+            Statement thenBranch = getStatement(retType);
             Expression elifCondition = nullptr;
             Statement elifBranch = nullptr;
             if(match({TokenType::ELIF})){
                 consume(TokenType::LEFT_PAREN,"Expect '(' after elif");
                 elifCondition = getExpression();
                 consume(TokenType::RIGHT_PAREN,"Expect ')' after condition");
-                elifBranch = getStatement();
+                elifBranch = getStatement(retType);
             }
             
             Statement elseBranch = nullptr;
             if(match({TokenType::ELSE})){
-                elseBranch = getStatement();
+                elseBranch = getStatement(retType);
             }
 
             return makeStmt<IfStmt>(
@@ -537,17 +542,17 @@ class Parser{
                   );
         }
 
-        Statement getWhileStatement(){
+        Statement getWhileStatement(std::optional<Token> retType = std::nullopt){
             consume(TokenType::LEFT_PAREN,"Expect '(' after while.");
             Expression condition = getExpression();
             consume(TokenType::RIGHT_PAREN,"Expect ')' after condition.");
             
-            Statement body = getStatement();
+            Statement body = getStatement(retType);
 
             return makeStmt<WhileStmt>(std::move(condition),std::move(body));
         }
 
-        Statement getForStatement(){
+        Statement getForStatement(std::optional<Token> retType = std::nullopt){
             consume(TokenType::LEFT_PAREN,"Expect '(' after for.");
 
             Statement initializer;
@@ -571,7 +576,7 @@ class Parser{
             }
             
             consume(TokenType::RIGHT_PAREN,"Expect ')' after clauses.");
-            Statement body = getStatement();
+            Statement body = getStatement(retType);
 
             return makeStmt<ForStmt>(
                     std::move(initializer),
@@ -604,13 +609,14 @@ class Parser{
         }
 
         Statement getStatement(std::optional<Token> retType = std::nullopt){
+            //if(match({TokenType::CLASS})) return getClassDeclaration();
             if(match({TokenType::FUN})) return getFunctionStatement("function");
             if(match({TokenType::PRINT})) return getPrintStatement();
-            if(match({TokenType::IF})) return getIfStatement();
-            if(match({TokenType::WHILE})) return getWhileStatement();
-            if(match({TokenType::FOR})) return getForStatement();
+            if(match({TokenType::IF})) return getIfStatement(retType);
+            if(match({TokenType::WHILE})) return getWhileStatement(retType);
+            if(match({TokenType::FOR})) return getForStatement(retType);
             if(match({TokenType::RETURN})) return getReturnStatement(retType);
-            if(match({TokenType::LEFT_BRACE})) return makeStmt<BlockStmt>(getBlockStatement());
+            if(match({TokenType::LEFT_BRACE})) return makeStmt<BlockStmt>(getBlockStatement(retType));
 
             return getExprStatement();
         }

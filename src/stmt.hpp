@@ -51,6 +51,7 @@ public:
 	}
 };
 
+
 class ExprStmt : public Stmt {
 public:
 	Expression expression;
@@ -147,7 +148,7 @@ public:
 	}
 };
 
-std::string getTypeOfExpression(Statement stmt) {
+std::string getTypeOfExpression(const Statement& stmt) {
 	if (auto blockstmt = dynamic_cast<BlockStmt*>(stmt.get())) {
 		return "BlockStmt Expression";
 	} else if (auto exprstmt = dynamic_cast<ExprStmt*>(stmt.get())) {
