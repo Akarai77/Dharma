@@ -26,7 +26,6 @@
 
 class Interpreter : public ExprVisitor, public StmtVisitor{
     private:
-        std::unordered_map<Expr*, int> locals;
 
         bool isTruthy(LiteralValue literal) const {
             if(literal.second == "nil") return false;
@@ -314,17 +313,12 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         RuntimeValue visitCallExpr(CallExpr& expr) override {
             RuntimeValue callee = evaluate(expr.callee);
 
-            std::vector<LiteralValue> arguments;
-            for(auto& argument : expr.arguments) {
-                arguments.push_back(getLiteralValue(evaluate(argument)));
-            }
-
             if (auto function = std::get_if<std::shared_ptr<Callable>>(&callee)) {
                 int arity = (*function)->arity();
-                if(arity != arguments.size()) {
-                    throw RuntimeError(expr.paren,"Expected "+std::to_string(arity)+" arguments but got "+std::to_string(arguments.size())+".");
+                if(arity != expr.arguments.size()) {
+                    throw RuntimeError(expr.paren,"Expected "+std::to_string(arity)+" arguments but got "+std::to_string(expr.arguments.size())+".");
                 }
-                return (*function)->call(*this, expr.tokens, arguments);
+                return (*function)->call(*this,expr.name,std::move(expr.arguments));
             } else {
                 throw RuntimeError(expr.paren,"Can only call functions and classes.");
             }
@@ -451,6 +445,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
         Environment* globals = new Environment();
         Environment* environment = new Environment();
+        std::unordered_map<Expr*, int> locals;
 
         Interpreter() : environment(globals) {
             globals->define("clock",makeCallable<ClockFunction>(),"function");
@@ -506,11 +501,11 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         }
 
 
-        RuntimeValue evaluate(Expression& expression){
+        RuntimeValue evaluate(const Expression& expression){
             return expression->accept(*this);
         }
 
-        void execute(Statement& statement){
+        void execute(const Statement& statement){
             statement->accept(*this);
         }
 
@@ -524,14 +519,18 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
 };
 
-LiteralValue Function::call(Interpreter& interpreter, const std::vector<Token>& tokens, const std::vector<LiteralValue>& args) {
+LiteralValue Function::call(Interpreter& interpreter, const Token& name,const std::vector<Expression>& exprs) {
     Environment* environment = new Environment(interpreter.globals);
+    std::vector<LiteralValue> args;
+    for(auto& expr: exprs){
+        args.push_back(getLiteralValue(interpreter.evaluate(expr)));
+    }
 
     for(int i = 0;i<declaration.params.size();i++){
         auto varExpr = dynamic_cast<VarStmt*>(declaration.params[i].get());
         std::string varType = varExpr->type.lexeme;
         if(varType != args[i].second && varType != "var")
-            throw RuntimeError(tokens[0],"No matching function call.");
+            throw RuntimeError(name,"No matching function call.");
         environment->define(varExpr->name.lexeme,args[i],args[i].second);
     }
 
@@ -548,13 +547,21 @@ LiteralValue Function::call(Interpreter& interpreter, const std::vector<Token>& 
     return {Nil(),"nil"};
 }
 
-LiteralValue TypeOfFunction::call(Interpreter& interpreter, const std::vector<Token>& tokens, const std::vector<LiteralValue>& args) {
-    if(tokens.size() == 2) {
-        
-        std::string type = interpreter.environment->getType(tokens[1]);
-        if(type == "variable")
-            type += " " + args[0].second;
+LiteralValue TypeOfFunction::call(Interpreter& interpreter, const Token& name,const std::vector<Expression>& exprs) {
+    LiteralValue arg = getLiteralValue(interpreter.evaluate(exprs[0]));
+    if(auto varExpr = dynamic_cast<VariableExpr*>(exprs[0].get())) {
+        std::string type;
+        if(interpreter.locals.contains(varExpr)) {
+            type = interpreter.environment->getTypeAt(interpreter.locals[varExpr], varExpr->name);
+        } else {
+            type = interpreter.globals->getType(varExpr->name);
+        }
+        if(type == "variable" && arg.second != "nil") {
+            type += " " + arg.second;
+        }
         return {type,"type"};
     }
-    return {args[0].second,"type"};
+    if(arg.second == "nil")
+        return {std::string("WTF is wrong with you?"),"type"};
+    return {arg.second,"type"};
 }

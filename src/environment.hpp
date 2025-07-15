@@ -55,6 +55,10 @@ class Environment{
             throw RuntimeError(name, "Undefined Variable '" + name.lexeme +"'.");
         }
 
+        std::string getTypeAt(int distance,Token name) {
+            return ancestor(distance)->values.at(name.lexeme).second;
+        }
+
         void assignAt(int distance,Token name,LiteralValue value) {
             ancestor(distance)->values[name.lexeme].first = value;
         }

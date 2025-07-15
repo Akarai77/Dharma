@@ -308,16 +308,9 @@ class Parser{
                     }
                     
                     auto varExpr = dynamic_cast<VariableExpr*>(expr.get());
-                    tokens.push_back(varExpr->name);
-
-                    for(auto& expr : arguments) {
-                        if(auto varExpr = dynamic_cast<VariableExpr*>(expr.get())) {
-                            tokens.push_back(varExpr->name);
-                        }
-                    }
 
                     Token paren = consume(TokenType::RIGHT_PAREN,"Expect ')' after arguments.");
-                    expr = makeExpr<CallExpr>(tokens,std::move(expr),paren,std::move(arguments));
+                    expr = makeExpr<CallExpr>(varExpr->name,std::move(expr),paren,std::move(arguments));
                 } else {
                     break;
                 }

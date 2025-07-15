@@ -3,7 +3,7 @@ Expr
 Expression
 AssignExpr -> Token name, Token Operator, Expression *value
 BinaryExpr -> Expression *left, Token Operator, Expression *right
-CallExpr -> std::vector<Token> tokens,Expression *callee,Token paren,std::vector<Expression> *arguments
+CallExpr -> Token name,Expression *callee,Token paren,std::vector<Expression> *arguments
 UnaryExpr -> Token Operator, Expression *right
 GroupingExpr -> Expression *expression
 LiteralExpr -> LiteralValue literal

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "expr.hpp"
 #include "token.hpp"
 #include "util.hpp"
 #include <chrono>
@@ -17,12 +18,12 @@ class Callable {
         virtual ~Callable() = default;
         virtual int arity() const = 0;
         virtual std::string toString() const = 0;
-        virtual LiteralValue call(Interpreter& interpreter, const std::vector<Token>& tokens, const std::vector<LiteralValue>& args) = 0;
+        virtual LiteralValue call(Interpreter& interpreter, const Token& name,const std::vector<Expression>& exprs) = 0;
 };
 
 class ClockFunction : public Callable {
 public:
-    LiteralValue call(Interpreter& interpreter, const std::vector<Token>& tokens, const std::vector<LiteralValue>& args) override {
+    LiteralValue call(Interpreter& interpreter, const Token& name,const std::vector<Expression>& exprs) override {
         using namespace std::chrono;
         auto now = duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count();
         double seconds = static_cast<double>(now) / 1000.0;
@@ -36,7 +37,7 @@ public:
 
 class TypeOfFunction : public Callable {
     public:
-        LiteralValue call(Interpreter& interpreter, const std::vector<Token>& tokens, const std::vector<LiteralValue>& args) override;
+        LiteralValue call(Interpreter& interpreter, const Token& name,const std::vector<Expression>& exprs) override;
 
         int arity() const override { return 1; }
 
