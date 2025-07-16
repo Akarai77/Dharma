@@ -1,5 +1,6 @@
 #pragma once
 
+#include "instance.hpp"
 #include "function.hpp"
 #include "token.hpp"
 #include "expr.hpp"
@@ -363,76 +364,104 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             return value;
         }
 
-        RuntimeValue visitPrintStmt(PrintStmt& statement) override {
-            RuntimeValue value = evaluate(statement.expression);
+        RuntimeValue visitGetExpr(GetExpr& expr) override {
+            RuntimeValue object = evaluate(expr.object);
+            if(std::holds_alternative<Instance>(object)) {
+                return std::get<Instance>(object)->get(expr.name);
+            }
+
+            throw RuntimeError(expr.name,"Only instances have properties.");
+        }
+
+        RuntimeValue visitSetExpr(SetExpr& expr) override {
+            RuntimeValue object = evaluate(expr.object);
+            
+            if(std::holds_alternative<Instance>(object)) {
+                LiteralValue value = getLiteralValue(evaluate(expr.value));
+                std::get<Instance>(object)->set(expr.name,value);
+                return value;
+            }
+
+            throw RuntimeError(expr.name,"Only instances have fields.");
+        }
+
+        RuntimeValue visitPrintStmt(PrintStmt& stmt) override {
+            RuntimeValue value = evaluate(stmt.expression);
             std::cout<<stringify(value)<<std::endl;
             return _NIL;
         }
 
-        RuntimeValue visitExprStmt(ExprStmt& statement) override{
-            evaluate(statement.expression);
+        RuntimeValue visitExprStmt(ExprStmt& stmt) override{
+            evaluate(stmt.expression);
             return _NIL;
         }
 
-        RuntimeValue visitVarStmt(VarStmt& statement) override {
+        RuntimeValue visitVarStmt(VarStmt& stmt) override {
             RuntimeValue value = _NIL;
-            if(statement.initializer != nullptr){
-                value = evaluate(statement.initializer);
+            if(stmt.initializer != nullptr){
+                value = evaluate(stmt.initializer);
             }
             
-            environment->define(statement.name.lexeme,value,statement.type.lexeme);
+            environment->define(stmt.name.lexeme,value,stmt.type.lexeme);
             return _NIL;
         }
 
-        RuntimeValue visitFunctionStmt(FunctionStmt& statement) override {
-            Function function(statement);
-            environment->define(statement.name.lexeme,makeCallable<Function>(function),statement.kind);
-            return _NIL;
-        }
-
-        RuntimeValue visitIfStmt(IfStmt& statement) override {
-            if(isTruthy(getLiteralValue(evaluate(statement.ifCondition)))){
-                execute(statement.thenBranch);
-            } else if(statement.elifCondition != nullptr && isTruthy(getLiteralValue(evaluate(statement.elifCondition)))){
-                execute(statement.elifBranch);
-            } else if(statement.elseBranch != nullptr){
-                execute(statement.elseBranch);
+        RuntimeValue visitIfStmt(IfStmt& stmt) override {
+            if(isTruthy(getLiteralValue(evaluate(stmt.ifCondition)))){
+                execute(stmt.thenBranch);
+            } else if(stmt.elifCondition != nullptr && isTruthy(getLiteralValue(evaluate(stmt.elifCondition)))){
+                execute(stmt.elifBranch);
+            } else if(stmt.elseBranch != nullptr){
+                execute(stmt.elseBranch);
             }
             return _NIL;
         }
 
-        RuntimeValue visitWhileStmt(WhileStmt& statement) override {
-            while(isTruthy(getLiteralValue(evaluate(statement.condition)))){
-                execute(statement.body);
+        RuntimeValue visitWhileStmt(WhileStmt& stmt) override {
+            while(isTruthy(getLiteralValue(evaluate(stmt.condition)))){
+                execute(stmt.body);
             }
 
             return _NIL;
         }
 
-        RuntimeValue visitForStmt(ForStmt& statement) override {
-            if (statement.initializer != nullptr) {
-                execute(statement.initializer);
+        RuntimeValue visitForStmt(ForStmt& stmt) override {
+            if (stmt.initializer != nullptr) {
+                execute(stmt.initializer);
             }
 
             while (true) {
-                if (statement.condition != nullptr && !isTruthy(getLiteralValue(evaluate(statement.condition)))) {
+                if (stmt.condition != nullptr && !isTruthy(getLiteralValue(evaluate(stmt.condition)))) {
                     break;
                 }
 
-                execute(statement.body);
+                execute(stmt.body);
 
-                if (statement.increment != nullptr) {
-                    evaluate(statement.increment);
+                if (stmt.increment != nullptr) {
+                    evaluate(stmt.increment);
                 }
             }
 
             return _NIL;
         }
 
-        RuntimeValue visitReturnStmt(ReturnStmt& statement) override {
+        RuntimeValue visitFunctionStmt(FunctionStmt& stmt) override {
+            Function function(stmt);
+            environment->define(stmt.name.lexeme,makeShared<Function>(function),stmt.kind);
+            return _NIL;
+        }
+
+        RuntimeValue visitReturnStmt(ReturnStmt& stmt) override {
             RuntimeValue value = nullptr;
-            if(statement.value != nullptr) value = evaluate(statement.value);
-            throw Return(statement.keyword,value,statement.retType);
+            if(stmt.value != nullptr) value = evaluate(stmt.value);
+            throw Return(stmt.keyword,value,stmt.retType);
+        }
+
+        RuntimeValue visitClassStmt(ClassStmt& stmt) override {
+            environment->define(stmt.name.lexeme, _NIL, "class");
+            Class klass(stmt.name.lexeme);
+            environment->assign(stmt.name,makeShared<Class>(klass));
+            return _NIL;
         }
 
         RuntimeValue visitBlockStmt(BlockStmt& stmt) override {
@@ -448,16 +477,16 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         std::unordered_map<Expr*, int> locals;
 
         Interpreter() : environment(globals) {
-            globals->define("clock",makeCallable<ClockFunction>(),"function");
-            globals->define("typeOf",makeCallable<TypeOfFunction>(),"function");
+            globals->define("clock",makeShared<ClockFunction>(),"function");
+            globals->define("typeOf",makeShared<TypeOfFunction>(),"function");
         }
 
         ~Interpreter() {}
 
-        void interpret(std::vector<Statement>& statements){
+        void interpret(std::vector<Statement>& stmts){
             try{
-                for(auto& statement : statements) {
-                    execute(statement);
+                for(auto& stmt : stmts) {
+                    execute(stmt);
                 }
             } catch(RuntimeError& err){
                 std::cerr<<err.message();
@@ -505,21 +534,21 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             return expression->accept(*this);
         }
 
-        void execute(const Statement& statement){
-            statement->accept(*this);
+        void execute(const Statement& stmt){
+            stmt->accept(*this);
         }
 
-        void executeBlock(std::vector<Statement>& statements,Environment* newEnvironment){
+        void executeBlock(std::vector<Statement>& stmts,Environment* newEnvironment){
             EnvSwitch Switch(this->environment,newEnvironment);
 
-            for(auto& statement : statements){
-                execute(statement);
+            for(auto& stmt : stmts){
+                execute(stmt);
             }
         }
 
 };
 
-LiteralValue Function::call(Interpreter& interpreter, const Token& name,const std::vector<Expression>& exprs) {
+RuntimeValue Function::call(Interpreter& interpreter, const Token& name,const std::vector<Expression>& exprs) {
     Environment* environment = new Environment(interpreter.globals);
     std::vector<LiteralValue> args;
     for(auto& expr: exprs){
@@ -544,10 +573,10 @@ LiteralValue Function::call(Interpreter& interpreter, const Token& name,const st
             LiteralValue val = interpreter.promoteType(retVal,retType,returnValue.keyword,errMsg);
         return val;
     }
-    return {Nil(),"nil"};
+    return LiteralValue{Nil(),"nil"};
 }
 
-LiteralValue TypeOfFunction::call(Interpreter& interpreter, const Token& name,const std::vector<Expression>& exprs) {
+RuntimeValue TypeOfFunction::call(Interpreter& interpreter, const Token& name,const std::vector<Expression>& exprs) {
     LiteralValue arg = getLiteralValue(interpreter.evaluate(exprs[0]));
     if(auto varExpr = dynamic_cast<VariableExpr*>(exprs[0].get())) {
         std::string type;
@@ -559,9 +588,9 @@ LiteralValue TypeOfFunction::call(Interpreter& interpreter, const Token& name,co
         if(type == "variable" && arg.second != "nil") {
             type += " " + arg.second;
         }
-        return {type,"type"};
+        return LiteralValue{type,"type"};
     }
     if(arg.second == "nil")
-        return {std::string("WTF is wrong with you?"),"type"};
-    return {arg.second,"type"};
+        return LiteralValue{std::string("WTF is wrong with you?"),"type"};
+    return LiteralValue{arg.second,"type"};
 }

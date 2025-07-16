@@ -5,6 +5,7 @@
 
 class Stmt;
 class BlockStmt;
+class ClassStmt;
 class ExprStmt;
 class PrintStmt;
 class VarStmt;
@@ -24,6 +25,7 @@ std::unique_ptr<T> makeStmt(Args&&... args) {
 class StmtVisitor {
 public:
 	virtual RuntimeValue visitBlockStmt(BlockStmt& stmt) = 0;
+	virtual RuntimeValue visitClassStmt(ClassStmt& stmt) = 0;
 	virtual RuntimeValue visitExprStmt(ExprStmt& stmt) = 0;
 	virtual RuntimeValue visitPrintStmt(PrintStmt& stmt) = 0;
 	virtual RuntimeValue visitVarStmt(VarStmt& stmt) = 0;
@@ -51,6 +53,16 @@ public:
 	}
 };
 
+class ClassStmt : public Stmt {
+public:
+	Token name;
+	std::vector<FunctionStmt> methods;
+
+	ClassStmt(Token name, std::vector<FunctionStmt>&& methods) : name(name), methods(std::move(methods)) {}
+	RuntimeValue accept(StmtVisitor& visitor) override {
+		return visitor.visitClassStmt(*this);
+	}
+};
 
 class ExprStmt : public Stmt {
 public:
@@ -151,6 +163,8 @@ public:
 std::string getTypeOfExpression(const Statement& stmt) {
 	if (auto blockstmt = dynamic_cast<BlockStmt*>(stmt.get())) {
 		return "BlockStmt Expression";
+	} else if (auto classstmt = dynamic_cast<ClassStmt*>(stmt.get())) {
+		return "ClassStmt Expression";
 	} else if (auto exprstmt = dynamic_cast<ExprStmt*>(stmt.get())) {
 		return "Stmt Expression";
 	} else if (auto printstmt = dynamic_cast<PrintStmt*>(stmt.get())) {

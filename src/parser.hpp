@@ -25,7 +25,7 @@ printStmt       -> "print" expression ";" ;
 returnStmt      -> "return" expression? ";" ;
 block           -> "{" declaration* "}" ;
 expression      -> assignment ;
-assignment      -> IDENTIFIER ("=" | "+=" | "-=" | "*=" | "/=" | "%=") assignment
+assignment      -> (call ".")? IDENTIFIER ("=" | "+=" | "-=" | "*=" | "/=" | "%=") assignment
                 |  logic_or ;
 logic_or        -> logic_and (("or" | "||") logic_and)*;
 logic_and       -> equality (("and" | "&&") equality)*;
@@ -35,7 +35,7 @@ term            -> factor ( ( "-" | "+" ) factor )* ;
 factor          -> unary ( ( "/" | "*" ) unary )* ;
 unary           -> ( "!" | "-" | "++" | "--" ) unary
                 | call ;
-call            -> primary ("++"|"--")?  ( "(" arguments? ")")* ;
+call            -> primary ("++"|"--")?  ( "(" arguments? ")" |  "." IDEINTIFIER )* ;
 arguments       -> expression ("," expression) * ;
 primary         -> VARIABLE | "true" | "false" | "nil"
                 |  "(" expression ")" ;
@@ -317,6 +317,9 @@ class Parser{
 
                     Token paren = consume(TokenType::RIGHT_PAREN,"Expect ')' after arguments.");
                     expr = makeExpr<CallExpr>(varExpr->name,std::move(expr),paren,std::move(arguments));
+                } else if (match({TokenType::DOT})) {
+                    Token name = consume(TokenType::IDENTIFIER,"Expect property name after '.'.");
+                    expr = makeExpr<GetExpr>(std::move(expr),name);
                 } else {
                     break;
                 }
@@ -430,6 +433,8 @@ class Parser{
 
                     Token name = varExpr->name;
                     return makeExpr<AssignExpr>(name,Operator,std::move(value));
+                } else if (auto inst = dynamic_cast<GetExpr*>(expr.get())) {
+                    return makeExpr<SetExpr>(inst->object,inst->name,value);
                 }
 
                 throw ParseError(Operator, "Assignment Target cant be a '"+getTypeOfExpression(expr)+"'.");
@@ -470,6 +475,19 @@ class Parser{
             consume(TokenType::LEFT_BRACE,"Expect '{' before "+kind+" body.");
             std::vector<Statement> body = std::move(getBlockStatement(retType));
             return makeStmt<FunctionStmt>(name,kind,std::move(parameters),std::move(body),retType);
+        }
+
+        Statement getClassDeclaration() {
+            Token name = consume(TokenType::IDENTIFIER,"Expect class name.");
+            consume(TokenType::LEFT_BRACE,"Expect '{' before class body.");
+
+            std::vector<FunctionStmt> methods;
+            while(!check(TokenType::RIGHT_BRACE) && !isAtEnd()) {
+                methods.push_back(*dynamic_cast<FunctionStmt*>(getFunctionStatement("method").get()));
+            }
+
+            consume(TokenType::RIGHT_BRACE,"Expect '}' after class body.");
+            return makeStmt<ClassStmt>(name,std::move(methods));
         }
 
         Statement getVarDeclaration(Token type,bool semiColon = true){
@@ -609,7 +627,7 @@ class Parser{
         }
 
         Statement getStatement(std::optional<Token> retType = std::nullopt){
-            //if(match({TokenType::CLASS})) return getClassDeclaration();
+            if(match({TokenType::CLASS})) return getClassDeclaration();
             if(match({TokenType::FUN})) return getFunctionStatement("function");
             if(match({TokenType::PRINT})) return getPrintStatement();
             if(match({TokenType::IF})) return getIfStatement(retType);

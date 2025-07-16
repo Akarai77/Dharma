@@ -63,14 +63,19 @@ class Environment{
             ancestor(distance)->values[name.lexeme].first = value;
         }
 
-        void assign(Token name,LiteralValue value){
+        void assign(Token name,RuntimeValue value){
             if(values.contains(name.lexeme)){
-                std::string type = values[name.lexeme].second;
-                if(type == value.second || type == "variable"){
+                LiteralValue val = getLiteralValue(value);
+                if(val == _NIL) {
                     values[name.lexeme].first = value;
                     return;
                 }
-                throw RuntimeError(name,"Cannot convert '"+value.second+"' to '"+type+"'");
+                std::string type = values[name.lexeme].second;
+                if(type == val.second || type == "variable"){
+                    values[name.lexeme].first = value;
+                    return;
+                }
+                throw RuntimeError(name,"Cannot convert '" + val.second + "' to '"+type+"'");
             }
 
             if(enclosing != nullptr){ 

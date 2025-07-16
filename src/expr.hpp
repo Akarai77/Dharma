@@ -10,6 +10,8 @@ class BinaryExpr;
 class CallExpr;
 class UnaryExpr;
 class GroupingExpr;
+class GetExpr;
+class SetExpr;
 class LiteralExpr;
 class LogicalExpr;
 class VariableExpr;
@@ -28,6 +30,8 @@ public:
 	virtual RuntimeValue visitCallExpr(CallExpr& expr) = 0;
 	virtual RuntimeValue visitUnaryExpr(UnaryExpr& expr) = 0;
 	virtual RuntimeValue visitGroupingExpr(GroupingExpr& expr) = 0;
+	virtual RuntimeValue visitGetExpr(GetExpr& expr) = 0;
+	virtual RuntimeValue visitSetExpr(SetExpr& expr) = 0;
 	virtual RuntimeValue visitLiteralExpr(LiteralExpr& expr) = 0;
 	virtual RuntimeValue visitLogicalExpr(LogicalExpr& expr) = 0;
 	virtual RuntimeValue visitVariableExpr(VariableExpr& expr) = 0;
@@ -98,6 +102,29 @@ public:
 	}
 };
 
+class GetExpr : public Expr {
+public:
+	Expression object;
+	Token name;
+
+	GetExpr(Expression object, Token name) : object(std::move(object)), name(name) {}
+	RuntimeValue accept(ExprVisitor& visitor) override {
+		return visitor.visitGetExpr(*this);
+	}
+};
+
+class SetExpr : public Expr {
+public:
+	Expression object;
+	Token name;
+	Expression value;
+
+	SetExpr(Expression object, Token name, Expression value) : object(object), name(name), value(value) {}
+	RuntimeValue accept(ExprVisitor& visitor) override {
+		return visitor.visitSetExpr(*this);
+	}
+};
+
 class LiteralExpr : public Expr {
 public:
 	LiteralValue literal;
@@ -141,6 +168,10 @@ std::string getTypeOfExpression(const Expression& expr) {
 		return "Unary Expression";
 	} else if (auto groupingexpr = dynamic_cast<GroupingExpr*>(expr.get())) {
 		return "Grouping Expression";
+	} else if (auto getexpr = dynamic_cast<GetExpr*>(expr.get())) {
+		return "Get Expression";
+	} else if (auto setexpr = dynamic_cast<SetExpr*>(expr.get())) {
+		return "Set Expression";
 	} else if (auto literalexpr = dynamic_cast<LiteralExpr*>(expr.get())) {
 		return "Literal Expression";
 	} else if (auto logicalexpr = dynamic_cast<LogicalExpr*>(expr.get())) {

@@ -3,6 +3,7 @@
 #include "error.hpp"
 #include "interpreter.hpp"
 #include "stmt.hpp"
+#include <cmath>
 #include <unordered_map>
 #include <vector>
 #include <iostream> // For logging
@@ -96,6 +97,12 @@ class Resolver : public ExprVisitor, public StmtVisitor {
             return _NIL;
         }
 
+        RuntimeValue visitClassStmt(ClassStmt& stmt) override {
+            declare(stmt.name);
+            define(stmt.name);
+            return _NIL;
+        }
+
         RuntimeValue visitExprStmt(ExprStmt& stmt) override {
             resolve(stmt.expression);
             return _NIL;
@@ -160,6 +167,17 @@ class Resolver : public ExprVisitor, public StmtVisitor {
             if(stmt.condition != nullptr) resolve(stmt.condition);
             if(stmt.increment != nullptr) resolve(stmt.increment);
             resolve(stmt.body);
+            return _NIL;
+        }
+
+        RuntimeValue visitGetExpr(GetExpr& expr) override {
+            resolve(expr.object);
+            return _NIL;
+        }
+
+        RuntimeValue visitSetExpr(SetExpr& expr) override {
+            resolve(expr.value);
+            resolve(expr.object);
             return _NIL;
         }
 
