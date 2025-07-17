@@ -11,7 +11,7 @@ class Interpreter;
 class Callable {
     public:
         virtual ~Callable() = default;
-        virtual int arity() const = 0;
+        virtual int arity() = 0;
         virtual std::string toString() const = 0;
         virtual RuntimeValue call(Interpreter& interpreter, const Token& name,const std::vector<Expression>& exprs) = 0;
 };
@@ -25,7 +25,7 @@ public:
         return LiteralValue{seconds, "decimal"};
     }
 
-    int arity() const override { return 0; }
+    int arity() override { return 0; }
 
     std::string toString() const override { return "<native fn>"; }
 };
@@ -34,7 +34,7 @@ class TypeOfFunction : public Callable {
     public:
         RuntimeValue call(Interpreter& interpreter, const Token& name,const std::vector<Expression>& exprs) override;
 
-        int arity() const override { return 1; }
+        int arity() override { return 1; }
 
         std::string toString() const override { return "<native fn>"; }
 };

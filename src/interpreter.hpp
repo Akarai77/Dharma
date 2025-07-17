@@ -61,6 +61,11 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
                 return callee->toString();
             }
 
+            if(std::holds_alternative<Instance>(result)) {
+                Instance inst = std::get<Instance>(result);
+                return inst->toString();
+            }
+
             LiteralValue lit = getLiteralValue(result);
             if (lit.second == "boolean") {
                 return std::get<bool>(lit.first) ? "true" : "false";
@@ -313,7 +318,6 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
         RuntimeValue visitCallExpr(CallExpr& expr) override {
             RuntimeValue callee = evaluate(expr.callee);
-
             if (auto function = std::get_if<std::shared_ptr<Callable>>(&callee)) {
                 int arity = (*function)->arity();
                 if(arity != expr.arguments.size()) {
@@ -353,8 +357,8 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         }
 
         RuntimeValue visitAssignExpr(AssignExpr& expr) override {
-            LiteralValue value = getLiteralValue(evaluate(expr.value));
-
+            RuntimeValue value = evaluate(expr.value);
+            
             if(locals.contains(&expr)) {
                 environment->assignAt(locals[&expr],expr.name,value);
             } else {
@@ -385,6 +389,10 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             throw RuntimeError(expr.name,"Only instances have fields.");
         }
 
+        RuntimeValue visitThisExpr(ThisExpr& expr) override {
+             return lookUpVariable(expr.keyword,&expr);
+        }
+
         RuntimeValue visitPrintStmt(PrintStmt& stmt) override {
             RuntimeValue value = evaluate(stmt.expression);
             std::cout<<stringify(value)<<std::endl;
@@ -401,7 +409,6 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             if(stmt.initializer != nullptr){
                 value = evaluate(stmt.initializer);
             }
-            
             environment->define(stmt.name.lexeme,value,stmt.type.lexeme);
             return _NIL;
         }
@@ -446,7 +453,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         }
 
         RuntimeValue visitFunctionStmt(FunctionStmt& stmt) override {
-            Function function(stmt);
+            Function function(stmt, environment,false);
             environment->define(stmt.name.lexeme,makeShared<Function>(function),stmt.kind);
             return _NIL;
         }
@@ -459,7 +466,12 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
         RuntimeValue visitClassStmt(ClassStmt& stmt) override {
             environment->define(stmt.name.lexeme, _NIL, "class");
-            Class klass(stmt.name.lexeme);
+            std::unordered_map<std::string,std::shared_ptr<Function>> methods;
+            for(auto& method : stmt.methods) {
+                Function function(method,environment,method.name.lexeme == "init");
+                methods[method.name.lexeme] = makeShared<Function>(function);
+            }
+            Class klass(stmt.name.lexeme,methods);
             environment->assign(stmt.name,makeShared<Class>(klass));
             return _NIL;
         }
@@ -549,7 +561,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 };
 
 RuntimeValue Function::call(Interpreter& interpreter, const Token& name,const std::vector<Expression>& exprs) {
-    Environment* environment = new Environment(interpreter.globals);
+    Environment* environment = new Environment(closure);
     std::vector<LiteralValue> args;
     for(auto& expr: exprs){
         args.push_back(getLiteralValue(interpreter.evaluate(expr)));
@@ -566,13 +578,16 @@ RuntimeValue Function::call(Interpreter& interpreter, const Token& name,const st
     try {
         interpreter.executeBlock(declaration.body,environment);
     } catch (Return& returnValue) {
+        if(isInitializer) return closure->getAt(0,"this");
         LiteralValue retVal = getLiteralValue(returnValue.value);
         std::string retType = returnValue.retType->lexeme;
         if(retType == "var") retType = retVal.second;
         std::string errMsg = "Cannot convert '" + retVal.second + "' to '" + retType + "'.";
-            LiteralValue val = interpreter.promoteType(retVal,retType,returnValue.keyword,errMsg);
+        LiteralValue val = interpreter.promoteType(retVal,retType,returnValue.keyword,errMsg);
         return val;
     }
+
+    if(isInitializer) return closure->getAt(0,"this");
     return LiteralValue{Nil(),"nil"};
 }
 

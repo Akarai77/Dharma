@@ -278,6 +278,10 @@ class Parser{
                 return makeExpr<LiteralExpr>(lit);
             }
 
+            if(match({TokenType::THIS})) {
+                return makeExpr<ThisExpr>(previous());
+            }
+
             if(match({TokenType::IDENTIFIER})) {
                 return makeExpr<VariableExpr>(previous());
             }
@@ -303,6 +307,12 @@ class Parser{
 
             while(true) {
                 if(match({TokenType::LEFT_PAREN})) {
+                    if(type.has_value() && type->lexeme != "var") {
+                        std::string t = type->lexeme;
+                        if(t == "int") t = "integer";
+                        throw ParseError(type.value(),"Cannot assign function/method reference to variable of type '" + t + "'.");
+                    }
+
                     std::vector<Expression> arguments;
                     if(!check(TokenType::RIGHT_PAREN)) {
                         do {
@@ -312,9 +322,7 @@ class Parser{
                             arguments.push_back(getExpression());
                         } while(match({TokenType::COMMA}));
                     }
-                    
                     auto varExpr = dynamic_cast<VariableExpr*>(expr.get());
-
                     Token paren = consume(TokenType::RIGHT_PAREN,"Expect ')' after arguments.");
                     expr = makeExpr<CallExpr>(varExpr->name,std::move(expr),paren,std::move(arguments));
                 } else if (match({TokenType::DOT})) {
@@ -324,7 +332,7 @@ class Parser{
                     break;
                 }
             }
-
+            
             return expr;
         }
 
@@ -428,13 +436,13 @@ class Parser{
                                 std::move(expr),
                                 mapCompoundToBinary(Operator),
                                 std::move(value)
-                               );
+                                  );
                     }
 
                     Token name = varExpr->name;
                     return makeExpr<AssignExpr>(name,Operator,std::move(value));
                 } else if (auto inst = dynamic_cast<GetExpr*>(expr.get())) {
-                    return makeExpr<SetExpr>(inst->object,inst->name,value);
+                    return makeExpr<SetExpr>(std::move(inst->object),inst->name,std::move(value));
                 }
 
                 throw ParseError(Operator, "Assignment Target cant be a '"+getTypeOfExpression(expr)+"'.");
@@ -483,7 +491,7 @@ class Parser{
 
             std::vector<FunctionStmt> methods;
             while(!check(TokenType::RIGHT_BRACE) && !isAtEnd()) {
-                methods.push_back(*dynamic_cast<FunctionStmt*>(getFunctionStatement("method").get()));
+                methods.push_back(std::move(*dynamic_cast<FunctionStmt*>(getFunctionStatement("method").get())));
             }
 
             consume(TokenType::RIGHT_BRACE,"Expect '}' after class body.");

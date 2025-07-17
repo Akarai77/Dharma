@@ -4,13 +4,20 @@
 #include "interpreter.hpp"
 #include "stmt.hpp"
 #include <cmath>
+#include <iostream>
 #include <unordered_map>
 #include <vector>
-#include <iostream> // For logging
 
 enum class FunctionType {
     NONE,
-    FUNCTION
+    FUNCTION,
+    INITIALIZER,
+    METHOD
+};
+
+enum class ClassType {
+    CLASS,
+    NONE
 };
 
 class Resolver : public ExprVisitor, public StmtVisitor {
@@ -18,6 +25,7 @@ class Resolver : public ExprVisitor, public StmtVisitor {
         Interpreter& interpreter;
         std::vector<std::unordered_map<std::string, bool>> scopes;
         FunctionType currentFunction = FunctionType::NONE;
+        ClassType currentClass = ClassType::NONE;
 
         void resolve(const Statement& stmt) {
             stmt->accept(*this);
@@ -98,8 +106,24 @@ class Resolver : public ExprVisitor, public StmtVisitor {
         }
 
         RuntimeValue visitClassStmt(ClassStmt& stmt) override {
+            ClassType enclosingClass = currentClass;
+            currentClass = ClassType::CLASS;
             declare(stmt.name);
             define(stmt.name);
+
+            beginScope();
+            scopes.back()["this"] = true;
+
+            for(auto& method : stmt.methods) {
+                FunctionType declaration = FunctionType::METHOD;
+                if(method.name.lexeme == "init") {
+                    declaration = FunctionType::INITIALIZER;
+                }
+                resolveFunction(method,declaration);
+            }
+
+            endScope();
+            currentClass = enclosingClass;
             return _NIL;
         }
 
@@ -140,6 +164,9 @@ class Resolver : public ExprVisitor, public StmtVisitor {
             }
 
             if(stmt.value != nullptr) {
+                if(currentFunction == FunctionType::INITIALIZER) {
+                    throw ParseError(stmt.keyword,"Cannot return a value from an initializer.");
+                }
                 resolve(stmt.value);
             }
 
@@ -178,6 +205,15 @@ class Resolver : public ExprVisitor, public StmtVisitor {
         RuntimeValue visitSetExpr(SetExpr& expr) override {
             resolve(expr.value);
             resolve(expr.object);
+            return _NIL;
+        }
+
+        RuntimeValue visitThisExpr(ThisExpr& expr) override {
+            if(currentClass == ClassType::NONE){
+                throw ParseError(expr.keyword,"Cannot use this outside of a class.");
+            }
+
+            resolveLocal(&expr,expr.keyword);
             return _NIL;
         }
 

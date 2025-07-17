@@ -7,7 +7,8 @@ CallExpr     -> Token name,Expression *callee,Token paren,std::vector<Expression
 UnaryExpr    -> Token Operator, Expression *right
 GroupingExpr -> Expression *expression
 GetExpr      -> Expression *object,Token name
-SetExpr      -> Expression object, Token name, Expression value
+SetExpr      -> Expression *object, Token name, Expression *value
+ThisExpr     -> Token keyword
 LiteralExpr  -> LiteralValue literal
 LogicalExpr  -> Expression *left,Token Operator,Expression *right
 VariableExpr -> Token name

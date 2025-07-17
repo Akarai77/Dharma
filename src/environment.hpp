@@ -59,7 +59,7 @@ class Environment{
             return ancestor(distance)->values.at(name.lexeme).second;
         }
 
-        void assignAt(int distance,Token name,LiteralValue value) {
+        void assignAt(int distance,Token name,RuntimeValue value) {
             ancestor(distance)->values[name.lexeme].first = value;
         }
 
@@ -106,6 +106,8 @@ class Environment{
                     valStr = "'" + std::get<std::string>((getLiteralValue(value).first)) + "'";
                 } else if (type == "function") {
                     valStr = "<function>";
+                } else if(type == "class") {
+                    valStr = "<class>";
                 } else if (type == "nil") {
                     valStr = "nil";
                 } else {

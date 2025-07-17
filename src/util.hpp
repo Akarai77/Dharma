@@ -16,10 +16,8 @@
 #define RESET   "\033[0m"
 
 class Callable;
-class Class;
 class Inst;
 using CallAble = std::shared_ptr<Callable>;
-using Klass = std::shared_ptr<Class>;
 using Instance = std::shared_ptr<Inst>;
 
 template <typename T, typename... Args>
@@ -30,7 +28,7 @@ std::shared_ptr<T> makeShared(Args&&... args) {
 using LiteralCore = std::variant<Integer,double,BigDecimal,std::string,bool,Nil>;
 using LiteralType = std::optional<LiteralCore>;
 using LiteralValue = std::pair<LiteralCore,std::string>;
-using RuntimeValue = std::variant<LiteralValue,CallAble,Klass,Instance,std::nullptr_t>;
+using RuntimeValue = std::variant<LiteralValue,CallAble,Instance,std::nullptr_t>;
 
 #define _NIL LiteralValue{Nil(),"nil"}
 

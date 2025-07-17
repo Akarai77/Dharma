@@ -1,9 +1,1 @@
-fun fib(var n) -> int {
-    if(n<=1)
-        return n
 
-    return fib(n-1) + fib(n-2)
-}
-
-for(var i = 0;i<20;i++)
-    print fib(i)
