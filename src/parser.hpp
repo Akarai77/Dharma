@@ -11,7 +11,8 @@ statement       -> exprStmt
                 |  printStmt
                 |  returnStmt
                 |  block ;
-classDecl       -> "class" IDENTIFER "{" function* "}" ;
+classDecl       -> "class" IDENTIFER ( "extends" IDENTIFIER )?
+                   "{" function* "}" ;
 funcDecl        -> "fun" function ;
 varDecl         -> ("var"|"int"|"boolean"|"decimal"|"BigDecimal"|"string") IDENTIFIER (":" (int"|"decimal"|"BigDecimal"|string"|"boolean"))? ( "=" expression )? ";";
 exprStmt        -> expression ";" ;
@@ -38,7 +39,7 @@ unary           -> ( "!" | "-" | "++" | "--" ) unary
 call            -> primary ("++"|"--")?  ( "(" arguments? ")" |  "." IDEINTIFIER )* ;
 arguments       -> expression ("," expression) * ;
 primary         -> VARIABLE | "true" | "false" | "nil"
-                |  "(" expression ")" ;
+                |  "(" expression ")" | "super" "." IDENTIFIER;
 
 
 function        -> IDENTIFIER "(" parameters? ")" block;
@@ -282,6 +283,13 @@ class Parser{
                 return makeExpr<ThisExpr>(previous());
             }
 
+            if(match({TokenType::SUPER})) {
+                Token keyword = previous();
+                consume(TokenType::DOT,"Expect '.' after super.");
+                Token method = consume(TokenType::IDENTIFIER,"Expect superclass method name.");
+                return makeExpr<SuperExpr>(keyword,method);
+            }
+
             if(match({TokenType::IDENTIFIER})) {
                 return makeExpr<VariableExpr>(previous());
             }
@@ -322,9 +330,17 @@ class Parser{
                             arguments.push_back(getExpression());
                         } while(match({TokenType::COMMA}));
                     }
-                    auto varExpr = dynamic_cast<VariableExpr*>(expr.get());
+
                     Token paren = consume(TokenType::RIGHT_PAREN,"Expect ')' after arguments.");
-                    expr = makeExpr<CallExpr>(varExpr->name,std::move(expr),paren,std::move(arguments));
+                    if(auto varExpr = dynamic_cast<VariableExpr*>(expr.get())) {
+                        expr = makeExpr<CallExpr>(varExpr->name, std::move(expr), paren, std::move(arguments));
+                    } else if(auto getExpr = dynamic_cast<GetExpr*>(expr.get())) {
+                        expr = makeExpr<CallExpr>(getExpr->name, std::move(expr), paren, std::move(arguments));
+                    } else if(auto superExpr = dynamic_cast<SuperExpr*>(expr.get())) {
+                        expr = makeExpr<CallExpr>(superExpr->method, std::move(expr), paren, std::move(arguments));
+                    } else {
+                        throw ParseError(paren, "Can only call functions or classes.");
+                    }
                 } else if (match({TokenType::DOT})) {
                     Token name = consume(TokenType::IDENTIFIER,"Expect property name after '.'.");
                     expr = makeExpr<GetExpr>(std::move(expr),name);
@@ -487,6 +503,13 @@ class Parser{
 
         Statement getClassDeclaration() {
             Token name = consume(TokenType::IDENTIFIER,"Expect class name.");
+            
+            Expression superclass = nullptr;
+            if(match({TokenType::EXTENDS})) {
+                consume(TokenType::IDENTIFIER,"Expect superclass name.");
+                superclass = makeExpr<VariableExpr>(previous());
+            }
+
             consume(TokenType::LEFT_BRACE,"Expect '{' before class body.");
 
             std::vector<FunctionStmt> methods;
@@ -495,7 +518,7 @@ class Parser{
             }
 
             consume(TokenType::RIGHT_BRACE,"Expect '}' after class body.");
-            return makeStmt<ClassStmt>(name,std::move(methods));
+            return makeStmt<ClassStmt>(name,std::move(superclass),std::move(methods));
         }
 
         Statement getVarDeclaration(Token type,bool semiColon = true){

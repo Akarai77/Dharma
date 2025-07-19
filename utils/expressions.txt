@@ -8,6 +8,7 @@ UnaryExpr    -> Token Operator, Expression *right
 GroupingExpr -> Expression *expression
 GetExpr      -> Expression *object,Token name
 SetExpr      -> Expression *object, Token name, Expression *value
+SuperExpr    -> Token keyword, Token method
 ThisExpr     -> Token keyword
 LiteralExpr  -> LiteralValue literal
 LogicalExpr  -> Expression *left,Token Operator,Expression *right

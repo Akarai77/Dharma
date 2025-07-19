@@ -11,6 +11,7 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <variant>
 #include "error.hpp"
 #include "util.hpp"
 #include "callable.hpp"
@@ -318,7 +319,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
         RuntimeValue visitCallExpr(CallExpr& expr) override {
             RuntimeValue callee = evaluate(expr.callee);
-            if (auto function = std::get_if<std::shared_ptr<Callable>>(&callee)) {
+            if (auto function = std::get_if<CallAble>(&callee)) {
                 int arity = (*function)->arity();
                 if(arity != expr.arguments.size()) {
                     throw RuntimeError(expr.paren,"Expected "+std::to_string(arity)+" arguments but got "+std::to_string(expr.arguments.size())+".");
@@ -370,6 +371,7 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
         RuntimeValue visitGetExpr(GetExpr& expr) override {
             RuntimeValue object = evaluate(expr.object);
+
             if(std::holds_alternative<Instance>(object)) {
                 return std::get<Instance>(object)->get(expr.name);
             }
@@ -387,6 +389,21 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
             }
 
             throw RuntimeError(expr.name,"Only instances have fields.");
+        }
+
+        RuntimeValue visitSuperExpr(SuperExpr& expr) override {
+            int distance = locals[&expr];
+            auto callable = std::get<CallAble>(environment->getAt(distance, "super"));
+            auto ptr = dynamic_cast<Class*>(callable.get());
+            if (!ptr) throw RuntimeError(expr.method, "super is not a class.");
+            auto superclass = std::dynamic_pointer_cast<Class>(callable);
+
+            Instance object = std::get<Instance>(environment->getAt(distance-1,"this"));
+            std::shared_ptr<Function> method = superclass->findMethod(expr.method.lexeme);
+            if(method == nullptr) {
+                throw RuntimeError(expr.method,"Undefined property '" + expr.method.lexeme + "'.");
+            }
+            return method->bind(object);
         }
 
         RuntimeValue visitThisExpr(ThisExpr& expr) override {
@@ -465,13 +482,44 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
         }
 
         RuntimeValue visitClassStmt(ClassStmt& stmt) override {
+            RuntimeValue superclass = _NIL;
+            std::shared_ptr<Class> supClass = nullptr;
+
+            if(stmt.superclass != nullptr){
+                superclass = evaluate(stmt.superclass);
+                auto varExpr = dynamic_cast<VariableExpr*>(stmt.superclass.get());
+                if(!std::holds_alternative<CallAble>(superclass)) {
+                    throw RuntimeError(varExpr->name,"Superclass must be a class");
+                }
+
+                if(!dynamic_cast<Class*>(std::get<CallAble>(superclass).get())) {
+                    throw RuntimeError(varExpr->name,"Superclass must be a class");
+                }
+
+            }
+
+            if(std::get_if<CallAble>(&superclass) != nullptr){
+                supClass = makeShared<Class>(*dynamic_cast<Class*>(std::get<CallAble>(superclass).get()));
+            }
+
             environment->define(stmt.name.lexeme, _NIL, "class");
+            if(stmt.superclass != nullptr) {
+                environment = new Environment(environment);
+                environment->define("super",superclass,"superclass");
+            }
+
             std::unordered_map<std::string,std::shared_ptr<Function>> methods;
             for(auto& method : stmt.methods) {
                 Function function(method,environment,method.name.lexeme == "init");
                 methods[method.name.lexeme] = makeShared<Function>(function);
             }
-            Class klass(stmt.name.lexeme,methods);
+
+            Class klass(stmt.name.lexeme,supClass,methods);
+
+            if(stmt.superclass != nullptr){
+                environment = environment->enclosing;
+            }
+
             environment->assign(stmt.name,makeShared<Class>(klass));
             return _NIL;
         }

@@ -17,6 +17,7 @@ enum class FunctionType {
 
 enum class ClassType {
     CLASS,
+    SUBCLASS,
     NONE
 };
 
@@ -111,6 +112,17 @@ class Resolver : public ExprVisitor, public StmtVisitor {
             declare(stmt.name);
             define(stmt.name);
 
+            if(stmt.superclass != nullptr) {
+                auto varExpr = dynamic_cast<VariableExpr*>(stmt.superclass.get());
+                if(stmt.name.lexeme == varExpr->name.lexeme){
+                    throw ParseError(varExpr->name,"A class cannot inherit itself.");
+                }
+                currentClass = ClassType::SUBCLASS;
+                resolve(stmt.superclass);
+                beginScope();
+                scopes.back()["super"] = true;
+            }
+
             beginScope();
             scopes.back()["this"] = true;
 
@@ -121,6 +133,9 @@ class Resolver : public ExprVisitor, public StmtVisitor {
                 }
                 resolveFunction(method,declaration);
             }
+
+            if(stmt.superclass != nullptr)
+                endScope();
 
             endScope();
             currentClass = enclosingClass;
@@ -205,6 +220,16 @@ class Resolver : public ExprVisitor, public StmtVisitor {
         RuntimeValue visitSetExpr(SetExpr& expr) override {
             resolve(expr.value);
             resolve(expr.object);
+            return _NIL;
+        }
+
+        RuntimeValue visitSuperExpr(SuperExpr& expr) override {
+            if(currentClass == ClassType::NONE) {
+                throw ParseError(expr.keyword,"Cannot use 'super' oustide of a class.");
+            } else if(currentClass != ClassType::SUBCLASS) {
+                throw ParseError(expr.keyword,"Cannot use 'super' in a class with no superclass.");
+            }
+            resolveLocal(&expr,expr.keyword);
             return _NIL;
         }
 

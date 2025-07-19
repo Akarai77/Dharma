@@ -6,11 +6,10 @@
 
 
 class Environment{
-    private:
+    public:
         Environment* enclosing;
         std::unordered_map<std::string, std::pair<RuntimeValue,std::string>> values;
 
-    public:
 
         Environment() : enclosing(nullptr) {}
 

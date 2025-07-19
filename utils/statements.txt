@@ -2,7 +2,7 @@
 Stmt
 Statement
 BlockStmt    -> std::vector<Statement> **statements
-ClassStmt    -> Token name, std::vector<FunctionStmt> **methods
+ClassStmt    -> Token name, Expression *superclass, std::vector<FunctionStmt> **methods
 ExprStmt     -> Expression *expression
 PrintStmt    -> Expression *expression
 VarStmt      -> Token name,Token type, Expression *initializer

@@ -1,1 +1,17 @@
+class Doughnut {
+  cook() {
+    print "Fry until golden brown.";
+  }
+}
 
+var d
+
+class BostonCream extends Doughnut {
+  cook() {
+    d = super.cook
+    print "Pipe full of custard and coat with chocolate.";
+  }
+}
+
+BostonCream().cook();
+d()

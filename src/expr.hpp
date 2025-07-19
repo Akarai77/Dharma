@@ -12,6 +12,7 @@ class UnaryExpr;
 class GroupingExpr;
 class GetExpr;
 class SetExpr;
+class SuperExpr;
 class ThisExpr;
 class LiteralExpr;
 class LogicalExpr;
@@ -33,6 +34,7 @@ public:
 	virtual RuntimeValue visitGroupingExpr(GroupingExpr& expr) = 0;
 	virtual RuntimeValue visitGetExpr(GetExpr& expr) = 0;
 	virtual RuntimeValue visitSetExpr(SetExpr& expr) = 0;
+	virtual RuntimeValue visitSuperExpr(SuperExpr& expr) = 0;
 	virtual RuntimeValue visitThisExpr(ThisExpr& expr) = 0;
 	virtual RuntimeValue visitLiteralExpr(LiteralExpr& expr) = 0;
 	virtual RuntimeValue visitLogicalExpr(LogicalExpr& expr) = 0;
@@ -127,6 +129,17 @@ public:
 	}
 };
 
+class SuperExpr : public Expr {
+public:
+	Token keyword;
+	Token method;
+
+	SuperExpr(Token keyword, Token method) : keyword(keyword), method(method) {}
+	RuntimeValue accept(ExprVisitor& visitor) override {
+		return visitor.visitSuperExpr(*this);
+	}
+};
+
 class ThisExpr : public Expr {
 public:
 	Token keyword;
@@ -184,6 +197,8 @@ std::string getTypeOfExpression(const Expression& expr) {
 		return "Get Expression";
 	} else if (auto setexpr = dynamic_cast<SetExpr*>(expr.get())) {
 		return "Set Expression";
+	} else if (auto superexpr = dynamic_cast<SuperExpr*>(expr.get())) {
+		return "Supe Expression";
 	} else if (auto thisexpr = dynamic_cast<ThisExpr*>(expr.get())) {
 		return "This Expression";
 	} else if (auto literalexpr = dynamic_cast<LiteralExpr*>(expr.get())) {

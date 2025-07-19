@@ -56,9 +56,10 @@ public:
 class ClassStmt : public Stmt {
 public:
 	Token name;
+	Expression superclass;
 	std::vector<FunctionStmt> methods;
 
-	ClassStmt(Token name, std::vector<FunctionStmt>&& methods) : name(name), methods(std::move(methods)) {}
+	ClassStmt(Token name, Expression superclass, std::vector<FunctionStmt>&& methods) : name(name), superclass(std::move(superclass)), methods(std::move(methods)) {}
 	RuntimeValue accept(StmtVisitor& visitor) override {
 		return visitor.visitClassStmt(*this);
 	}
