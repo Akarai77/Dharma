@@ -4,9 +4,10 @@
 #include "error.hpp"
 #include "function.hpp"
 #include "util.hpp"
+#include <memory>
 #include <unordered_map>
 
-class Inst {
+class Inst : public std::enable_shared_from_this<Inst>{
     private:
         Class klass;
         std::unordered_map<std::string, LiteralValue> fields;
@@ -24,7 +25,7 @@ class Inst {
             }
 
             std::shared_ptr<Function> method = klass.findMethod(name.lexeme);
-            if(method != nullptr) return method->bind(makeShared<Inst>(*this));
+            if(method != nullptr) return method->bind(shared_from_this());
 
             throw RuntimeError(name,"Undefined property '" + name.lexeme + "'.");
         }

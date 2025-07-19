@@ -1,62 +1,31 @@
-class Food {
-  init(var name) {
-    this.name = name;
-    print "Food: " + name;
-  }
+int a = 10;
 
-  prepare() {
-    print "Gathering ingredients for " + this.name;
-  }
+fun factorial(int n) {
+    if (n <= 1) return 1
+    return n * factorial(n - 1)
 }
 
-class BakedGood extends Food {
-  init(var name) {
-    super.init(name);
-    print "BakedGood: Preheat oven.";
-  }
+print factorial(a)  // 3628800
 
-  prepare() {
-    super.prepare();
-    print "Mixing dough for " + this.name;
-  }
+class Counter {
+    init(){
+        this.count = 0
+    }
+
+    increment() {
+        this.count = this.count + 1
+        print this.count
+    }
+
+    decrement(){
+        this.count = this.count - 1
+        print this.count
+    }
 }
 
-class Doughnut extends BakedGood {
-  init(var name) {
-    super.init(name);
-    print "Doughnut: Heating oil.";
-  }
-
-  cook() {
-    print "Fry " + this.name + " until golden brown.";
-  }
-}
-
-var log = "";
-
-class BostonCream extends Doughnut {
-  init() {
-    super.init("Boston Cream");
-    print "BostonCream: Fill with custard and coat with chocolate.";
-  }
-
-  cook() {
-    log = super.cook();
-    print "BostonCream: Post-fry decorations complete.";
-  }
-
-  serve() {
-    print "Serve chilled with coffee.";
-  }
-}
-
-var pastry = BostonCream();
-print "\n=== PREPARATION ===";
-pastry.prepare();
-
-print "\n=== COOKING ===";
-pastry.cook();
-
-print "\n=== SERVING ===";
-pastry.serve();
-
+var c = Counter()
+c.increment()  // 1
+c.decrement()
+c.decrement()
+c.decrement()
+c.increment()  // 2

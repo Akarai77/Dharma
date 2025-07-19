@@ -381,7 +381,8 @@ class Interpreter : public ExprVisitor, public StmtVisitor{
 
         RuntimeValue visitSetExpr(SetExpr& expr) override {
             RuntimeValue object = evaluate(expr.object);
-            
+            auto ptr = std::get<std::shared_ptr<Inst>>(object);
+
             if(std::holds_alternative<Instance>(object)) {
                 LiteralValue value = getLiteralValue(evaluate(expr.value));
                 std::get<Instance>(object)->set(expr.name,value);
@@ -617,7 +618,7 @@ RuntimeValue Function::call(Interpreter& interpreter, const Token& name,const st
 
     for(int i = 0;i<declaration.params.size();i++){
         auto varExpr = dynamic_cast<VarStmt*>(declaration.params[i].get());
-        std::string varType = varExpr->type.lexeme;
+        std::string varType = varExpr->type.lexeme == "int" ? "integer" : varExpr->type.lexeme;
         if(varType != args[i].second && varType != "var")
             throw RuntimeError(name,"No matching function call.");
         environment->define(varExpr->name.lexeme,args[i],args[i].second);

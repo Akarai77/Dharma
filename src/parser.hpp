@@ -38,7 +38,7 @@ unary           -> ( "!" | "-" | "++" | "--" ) unary
                 | call ;
 call            -> primary ("++"|"--")?  ( "(" arguments? ")" |  "." IDEINTIFIER )* ;
 arguments       -> expression ("," expression) * ;
-primary         -> VARIABLE | "true" | "false" | "nil"
+primary         -> VARIABLE | "true" | "false" | "nil" | "this"
                 |  "(" expression ")" | "super" "." IDENTIFIER;
 
 
