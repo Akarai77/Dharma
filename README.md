@@ -1,3 +1,4 @@
+````
 # 🌌 Dharma
 
 > **Enlightenment through execution.**
@@ -9,197 +10,100 @@ Everything else is in the void, waiting to manifest.
 
 ---
 
-## ⚙️ Core Components & Status
+# Sutra — The Dharma Interpreter
 
-| 🧱 Component           | Name      | Description                                          | Status            |
-| ---------------------- | --------- | ---------------------------------------------------- | ----------------- |
-| 🔧 **Interpreter**     | `Sutra`   | Spiritual real-time execution.                       | 🛠️ *In Progress* |
-| ❌ **Compiler**         | `Karma`   | Every line of code you write echoes here.            | ❌ Not started     |
-| ❌ **VM**               | `Samsara` | Where code is reborn and executed in cycles.         | ❌ Not started     |
-| ❌ **Standard Library** | `Mandala` | A web of sacred utilities.                           | ❌ Not started     |
-| ❌ **Package Manager**  | `Ashram`  | Wisdom shared. Modules managed.                      | ❌ Not started     |
-| ❌ **Build System**     | `Agni`    | Ignites and forges builds through fire.              | ❌ Not started     |
-| ❌ **Debugger**         | `Drishti` | Sees into the soul of your program.                  | ❌ Not started     |
-| ❌ **Formatter**        | `Bhava`   | Gives your code form, beauty, and expression.        | ❌ Not started     |
-| ❌ **Linter**           | `Yama`    | Disciplines your code. No mercy.                     | ❌ Not started     |
-| ❌ **REPL**             | `Mantra`  | Interactive chants of logic and return.              | ❌ Not started     |
-| ❌ **IDE Plugin**       | `Mudra`   | Hand gesture to summon power in your editor.         | ❌ Not started     |
-| ❌ **Doc Generator**    | `Veda`    | Sacred scrolls of wisdom from your comments.         | ❌ Not started     |
-| ❌ **Profiler**         | `Tapa`    | Measures the heat of performance under ascetic fire. | ❌ Not started     |
+**Sutra** is the spiritual real-time execution engine of Dharma — a **tree-walk interpreter** that evaluates Dharma scripts directly from their parsed syntax trees.
+
+It supports:
+
+- Dynamic and static typing (`var` and typed declarations)
+- Block scoping with shadowing
+- Functions with parameters and return values
+- Classes with inheritance and methods
+- Expression evaluation (arithmetic, comparisons, concatenation)
 
 ---
 
-## 🧠 Language Behavior & Features Demonstrated
+## Language Examples
 
-Here’s what `sutra` — the interpreter — is already slinging like a yogi with a chainsaw:
-
-### ⚡️ Variable Declaration Styles
-
-Dharma supports both **C-style static declarations** and **dynamic `var`-based declarations**.
-
-#### 🔹 C-style Static Typing
+### Variables & Types
 
 ```dharma
-int a = 10;
-string name = "Yama";
-boolean flag = true;
-decimal pi = 3.14;
-```
+var x = 42
+int y = 100
+var z: string = "hello"
+````
 
-* You can optionally leave the value out:
-
-  ```dharma
-  int count;
-  ```
-
-* Once typed, the value **cannot change type**:
-
-  ```dharma
-  int x = 5;
-  x = "boom"; // ❌ Type error
-  ```
-
-#### 🔹 Dynamic Typing with `var`
+### Functions
 
 ```dharma
-var x = 100;
-x = "string now";
-x = false;
+fun greet(name) {
+    print "Hello, " + name + "!"
+}
+
+greet("Pothel")  // Hello, Pothel!
 ```
 
-* Can change type during execution — this is **pure dynamic** mode.
-
-#### 🔹 Hybrid Mode: `var: Type`
+### Classes & Inheritance
 
 ```dharma
-var y: int = 100;
-y = 200;     // ✅
-y = true;    // ❌ Type error
+class Animal {
+    fun speak() {
+        print "Animal sound"
+    }
+}
+
+class Dog extends Animal {
+    fun speak() {
+        print "Woof!"
+    }
+}
+
+var dog = Dog()
+dog.speak()  // Woof!
 ```
-
-* You declare with `var` for syntax consistency but **lock the type** with `: int`, `: string`, etc.
-* Gives you the flexibility of dynamic syntax with static safety.
-
-🛑 `var: var` is banned. So is `int a: int;` or `int a: string;`. Redundant or conflicting types will throw spiritual errors.
 
 ---
 
-### 🔄 Block Scoping with Shadowing
+## Getting Started
+
+Build and run the interpreter:
+
+```bash
+mkdir build && cd build
+cmake ..
+cmake --build .
+./sutra ../src/test.dh
+```
+
+---
+
+## Sample Dharma Script (`test.dh`)
 
 ```dharma
 var a = 10
-{
-    var a = 50
-    print a // prints 50
+
+fun factorial(n) {
+    if (n <= 1) return 1
+    return n * factorial(n - 1)
 }
-print a // prints 10
-```
 
-Inner blocks can **redefine** (`shadow`) outer variables, and they return to normal once the block closes.
+print factorial(a)  // 3628800
 
----
+class Counter {
+    var count = 0
 
-### 🧘‍♂️ Semicolon Optionality
-
-You want `;`? Fine. You don’t? Also fine.
-
-```dharma
-print 42;
-print 42
-```
-
-Dharma don’t care — but you better be consistent with your chi.
-
----
-
-### 🧮 Built-in Operations
-
-* **Arithmetic:** `+`, `-`, `*`, `/`, `%`
-* **Comparison:** `==`, `!=`, `<`, `<=`, `>`, `>=`
-* **Logic:** `&&`, `||`, `!` (coming soon)
-* **Concatenation:** `+` works for strings
-* **Equality:** `==` is **type-safe**
-
----
-
-## 🛣️ Planned Features
-
-* Cross-platform bytecode execution (`Samsara`)
-* REPL mode (`Mantra`)
-* Package manager (`Ashram`)
-* Formatter (`Bhava`) and linter (`Yama`)
-* Doc generator (`Veda`)
-* Debugger (`Drishti`) and profiler (`Tapa`)
-* Build system (`Agni`) for scripting automation
-
----
-
-## 🧪 Sample Dharma Script (`test.dh`)
-
-```dharma
-int a = 100;
-var b: int = 200;
-print a + b;
-{
-    int a = 200;
-    print a * b;
-}
-print a;
-{
-    a = "500"
-    print a;
-    {
-        a = true
-        print a
+    fun increment() {
+        count = count + 1
+        print count
     }
 }
-boolean c = true;
-string d = 'hello'; print a == c
-var e = " world"
-print d + e
-```
 
-### Output
-
-```
-300
-40000
-100
-500
-true
-true
-hello world
+var c = Counter()
+c.increment()  // 1
+c.increment()  // 2
 ```
 
 ---
 
-## 🚀 Getting Started with Sutra
-
-### Clone the Repo
-
-```bash
-git clone https://github.com/your-username/dharma.git
-cd dharma
-```
-
-### Build with CMake
-
-```bash
-mkdir build
-cd build
-cmake ..
-cmake --build .
-```
-
-You'll get the `sutra` executable in the `build` directory.
-
-### Run a Dharma Script
-
-```bash
-./sutra ../src/test.dh    # On Unix
-.\sutra.exe ..\src\test.dh # On Windows
-```
-
----
-
-> *May your logic be clean. May your runtime be ruthless. May your bugs face Yama.*
+*May your logic be clean. May your runtime be ruthless. May your bugs face Yama.*
