@@ -1,17 +1,62 @@
-class Doughnut {
-  cook() {
-    print "Fry until golden brown.";
+class Food {
+  init(var name) {
+    this.name = name;
+    print "Food: " + name;
+  }
+
+  prepare() {
+    print "Gathering ingredients for " + this.name;
   }
 }
 
-var d
+class BakedGood extends Food {
+  init(var name) {
+    super.init(name);
+    print "BakedGood: Preheat oven.";
+  }
+
+  prepare() {
+    super.prepare();
+    print "Mixing dough for " + this.name;
+  }
+}
+
+class Doughnut extends BakedGood {
+  init(var name) {
+    super.init(name);
+    print "Doughnut: Heating oil.";
+  }
+
+  cook() {
+    print "Fry " + this.name + " until golden brown.";
+  }
+}
+
+var log = "";
 
 class BostonCream extends Doughnut {
+  init() {
+    super.init("Boston Cream");
+    print "BostonCream: Fill with custard and coat with chocolate.";
+  }
+
   cook() {
-    d = super.cook
-    print "Pipe full of custard and coat with chocolate.";
+    log = super.cook();
+    print "BostonCream: Post-fry decorations complete.";
+  }
+
+  serve() {
+    print "Serve chilled with coffee.";
   }
 }
 
-BostonCream().cook();
-d()
+var pastry = BostonCream();
+print "\n=== PREPARATION ===";
+pastry.prepare();
+
+print "\n=== COOKING ===";
+pastry.cook();
+
+print "\n=== SERVING ===";
+pastry.serve();
+

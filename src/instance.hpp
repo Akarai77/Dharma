@@ -3,6 +3,7 @@
 #include "class.hpp"
 #include "error.hpp"
 #include "function.hpp"
+#include "util.hpp"
 #include <unordered_map>
 
 class Inst {
@@ -34,11 +35,11 @@ class Inst {
 };
 
 RuntimeValue Class::call(Interpreter& interpreter, const Token& name,const std::vector<Expression>& exprs) {
-    Inst instance(*this);
+    Instance instance = makeShared<Inst>(*this);
     std::shared_ptr<Function> initializer = findMethod("init");
     if(initializer != nullptr) {
-        initializer->bind(makeShared<Inst>(instance))->call(interpreter,name,exprs);
+        initializer->bind(instance)->call(interpreter,name,exprs);
     }
 
-    return makeShared<Inst>(instance);
+    return instance;
 }
