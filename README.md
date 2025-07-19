@@ -36,11 +36,11 @@ var z: string = "hello"
 ### Functions
 
 ```dharma
-fun greet(name) {
+fun greet(var name) {
     print "Hello, " + name + "!"
 }
 
-greet("Pothel")  // Hello, Pothel!
+greet("World")  // Hello, World!
 ```
 
 ### Classes & Inheritance
@@ -80,9 +80,9 @@ cmake --build .
 ## Sample Dharma Script (`test.dh`)
 
 ```dharma
-var a = 10
+var a = 10;
 
-fun factorial(n) {
+fun factorial(int n) -> int {
     if (n <= 1) return 1
     return n * factorial(n - 1)
 }
@@ -90,11 +90,13 @@ fun factorial(n) {
 print factorial(a)  // 3628800
 
 class Counter {
-    var count = 0
+    init(){
+        this.count = 0
+    }
 
-    fun increment() {
-        count = count + 1
-        print count
+    increment() {
+        this.count = this.count + 1
+        print this.count
     }
 }
 
