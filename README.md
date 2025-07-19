@@ -1,4 +1,3 @@
-````
 # 🌌 Dharma
 
 > **Enlightenment through execution.**
