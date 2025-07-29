@@ -1,3 +1,5 @@
+> ⚡️ Built with blood, bytes, and a deep love for Robert Nystrom's Lox — shoutout to [_Crafting Interpreters_](https://craftinginterpreters.com) for showing the way.
+
 # 🌌 Dharma
 
 > **Enlightenment through execution.**
